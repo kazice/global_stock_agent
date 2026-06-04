@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# 环境变量 (含 API Key)
+.env
+
+# 缓存文件
+cache/*.json
+!cache/.gitkeep
+
+# 报告 (CI 自动生成, 本地不必提交)
+report.md
+report.txt
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
