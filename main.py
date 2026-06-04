@@ -270,6 +270,7 @@ def main():
             if sym not in pd: pd.append(sym)
             print("  [无数据]")
         if i < total: time.sleep(config.REQUEST_INTERVAL)
+    pd = [s for s in pd if s not in rs]  # 从待重试中移除已成功的
     save_cache(date_str, rs, pd)
     print(f"\n[缓存] {get_cache_path(date_str)}")
     finish(stocks, rs, pd)
