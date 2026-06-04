@@ -61,6 +61,36 @@ FALLBACK_CHAIN = {
     "stooq": [],
 }
 
+# 板块分组 (对应 watchlist.json 中股票的顺序索引)
+# 格式: (起始索引, 结束索引, 板块名)
+SECTORS = [
+    (0, 60, "半导体"),
+    (61, 84, "锂电·电池材料"),
+    (85, 99, "汽车"),
+    (100, 110, "算力·服务器"),
+    (111, 124, "互联网·软件"),
+    (125, 146, "屏幕·光学·电子制造"),
+    (147, 177, "医药·医疗"),
+    (178, 188, "军工·航空"),
+    (189, 204, "能源·光伏"),
+    (205, 217, "金融"),
+    (218, 228, "通信"),
+    (229, 240, "互联网平台"),
+    (241, 251, "工业·自动化"),
+    (252, 261, "工程机械"),
+    (262, 271, "化工"),
+    (272, 281, "物流·运输"),
+    (282, 287, "消费"),
+]
+
+
+def get_sector(index: int) -> str:
+    for start, end, name in SECTORS:
+        if start <= index <= end:
+            return name
+    return "其他"
+
+
 # ADR/OTC 替代映射 (原代码 → 美股 ADR 代码)
 # 所有主数据源+备选都失败后, 最后尝试通过 Finnhub 查 ADR
 ADR_MAP = {
@@ -244,8 +274,30 @@ def get_weekly_change(
 #  报告生成
 # =====================================================================
 
-def build_report(results: dict, stats: dict) -> str:
-    """生成 Markdown 格式报告"""
+def _sector_items(stocks: list, results: dict):
+    """按 watchlist 顺序生成 (sector, [(name, symbol, data), ...]) 分组"""
+    groups = {}
+    for i, s in enumerate(stocks):
+        sym = s["symbol"]
+        if sym not in results:
+            continue
+        sector = get_sector(i)
+        groups.setdefault(sector, []).append((s["name"], sym, results[sym]))
+    # 按 SECTORS 定义顺序输出
+    ordered = []
+    seen = set()
+    for _, _, sec_name in SECTORS:
+        if sec_name in groups:
+            ordered.append((sec_name, groups[sec_name]))
+            seen.add(sec_name)
+    for sec_name in groups:
+        if sec_name not in seen:
+            ordered.append((sec_name, groups[sec_name]))
+    return ordered
+
+
+def build_report(stocks: list, results: dict, stats: dict) -> str:
+    """生成 Markdown 报告 (板块分组 + 红绿箭头)"""
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [
         f"# 全球龙头行情日报 ({now})",
@@ -255,11 +307,11 @@ def build_report(results: dict, stats: dict) -> str:
         "",
     ]
 
-    # 日涨跌排行
     items = list(results.values())
     sorted_up = sorted(items, key=lambda x: x["change_pct"], reverse=True)
     sorted_down = sorted(items, key=lambda x: x["change_pct"])
 
+    # 涨幅/跌幅 TOP 10
     lines.append("## 今日涨幅 TOP 10")
     lines.append("| 名称 | 代码 | 最新价 | 涨跌幅 | 周涨跌 | 来源 |")
     lines.append("|------|------|--------|--------|--------|------|")
@@ -267,7 +319,7 @@ def build_report(results: dict, stats: dict) -> str:
         w = item.get("week_change")
         w_s = f"{w:+.2f}%" if w else "N/A"
         lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
-                      f"{item['change_pct']:+.2f}% | {w_s} | {item['source']} |")
+                      f"🟢{item['change_pct']:+.2f}% | {w_s} | {item['source']} |")
     lines.append("")
 
     lines.append("## 今日跌幅 TOP 10")
@@ -277,93 +329,84 @@ def build_report(results: dict, stats: dict) -> str:
         w = item.get("week_change")
         w_s = f"{w:+.2f}%" if w else "N/A"
         lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
-                      f"{item['change_pct']:+.2f}% | {w_s} | {item['source']} |")
-    lines.append("")
-
-    # 周涨跌排行 (只显示有周数据的)
-    week_items = [it for it in items if it.get("week_change") is not None]
-    if week_items:
-        wk_up = sorted(week_items, key=lambda x: x["week_change"], reverse=True)
-        wk_down = sorted(week_items, key=lambda x: x["week_change"])
-        lines.append("## 近一周涨幅 TOP 10")
-        lines.append("| 名称 | 代码 | 最新价 | 周涨跌 | 来源 |")
-        lines.append("|------|------|--------|--------|------|")
-        for item in wk_up[:10]:
-            lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
-                          f"{item['week_change']:+.2f}% | {item['source']} |")
-        lines.append("")
-
-        lines.append("## 近一周跌幅 TOP 10")
-        lines.append("| 名称 | 代码 | 最新价 | 周涨跌 | 来源 |")
-        lines.append("|------|------|--------|--------|------|")
-        for item in wk_down[:10]:
-            lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
-                          f"{item['week_change']:+.2f}% | {item['source']} |")
-        lines.append("")
-
-    # 全量明细
-    lines.append("## 全量明细")
-    lines.append("| 名称 | 代码 | 最新价 | 涨跌幅 | 周涨跌 | 来源 |")
-    lines.append("|------|------|--------|--------|--------|------|")
-    for item in sorted(items, key=lambda x: x["symbol"]):
-        w = item.get("week_change")
-        w_s = f"{w:+.2f}%" if w else "N/A"
-        lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
-                      f"{item['change_pct']:+.2f}% | {w_s} | {item['source']} |")
-
-    return "\n".join(lines)
-
-
-def build_report_text(results: dict, stats: dict) -> str:
-    """纯文本版 (推送到微信时使用)"""
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    lines = [f"全球龙头行情日报  {now}", "=" * 55, ""]
-    lines.append(f"成功:{stats['success']}  待重试:{stats['pending']}  "
-                 f"上涨:{stats['up']}  下跌:{stats['down']}")
-    lines.append("")
-
-    items = list(results.values())
-
-    # 日涨幅 TOP 10
-    lines.append("[今日涨幅 TOP 10]")
-    for item in sorted(items, key=lambda x: x["change_pct"], reverse=True)[:10]:
-        w = item.get("week_change")
-        w_s = f" 周{w:+.2f}%" if w else ""
-        lines.append(f"  [{item['source']}] {item['name']:<6s} "
-                      f"{item['price']:>8.2f}  {item['change_pct']:+.2f}%{w_s}")
-    lines.append("")
-
-    # 日跌幅 TOP 10
-    lines.append("[今日跌幅 TOP 10]")
-    for item in sorted(items, key=lambda x: x["change_pct"])[:10]:
-        w = item.get("week_change")
-        w_s = f" 周{w:+.2f}%" if w else ""
-        lines.append(f"  [{item['source']}] {item['name']:<6s} "
-                      f"{item['price']:>8.2f}  {item['change_pct']:+.2f}%{w_s}")
+                      f"🔴{item['change_pct']:+.2f}% | {w_s} | {item['source']} |")
     lines.append("")
 
     # 周涨跌排行
     week_items = [it for it in items if it.get("week_change") is not None]
     if week_items:
-        lines.append("[近一周涨幅 TOP 5]")
-        for item in sorted(week_items, key=lambda x: x["week_change"], reverse=True)[:5]:
-            lines.append(f"  [{item['source']}] {item['name']:<6s} "
-                          f"{item['price']:>8.2f}  周{item['week_change']:+.2f}%")
+        lines.append("## 近一周涨幅 TOP 10")
+        lines.append("| 名称 | 代码 | 最新价 | 周涨跌 | 来源 |")
+        lines.append("|------|------|--------|--------|------|")
+        for item in sorted(week_items, key=lambda x: x["week_change"], reverse=True)[:10]:
+            lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
+                          f"{item['week_change']:+.2f}% | {item['source']} |")
+        lines.append("")
+        lines.append("## 近一周跌幅 TOP 10")
+        for item in sorted(week_items, key=lambda x: x["week_change"])[:10]:
+            lines.append(f"| {item['name']} | {item['symbol']} | {item['price']:.2f} | "
+                          f"{item['week_change']:+.2f}% | {item['source']} |")
         lines.append("")
 
-        lines.append("[近一周跌幅 TOP 5]")
-        for item in sorted(week_items, key=lambda x: x["week_change"])[:5]:
-            lines.append(f"  [{item['source']}] {item['name']:<6s} "
-                          f"{item['price']:>8.2f}  周{item['week_change']:+.2f}%")
-        lines.append("")
+    # 全量: 按板块分组
+    lines.append("## 全量明细（按板块）")
+    for sector_name, group in _sector_items(stocks, results):
+        lines.append(f"")
+        lines.append(f"### {sector_name}")
+        lines.append("| 名称 | 代码 | 最新价 | 涨跌幅 | 周涨跌 | 来源 |")
+        lines.append("|------|------|--------|--------|--------|------|")
+        for name, sym, item in group:
+            w = item.get("week_change")
+            w_s = f"{w:+.2f}%" if w else "N/A"
+            cp = item["change_pct"]
+            arrow = "🟢" if cp >= 0 else "🔴"
+            lines.append(f"| {name} | {sym} | {item['price']:.2f} | "
+                          f"{arrow}{cp:+.2f}% | {w_s} | {item['source']} |")
 
-    # 全量
-    lines.append("[全量明细]")
-    for item in sorted(items, key=lambda x: x["symbol"]):
-        w = item.get("week_change")
-        w_s = f" 周{w:+.2f}%" if w else ""
-        lines.append(f"  [{item['source']}] {item['name']:<6s} "
-                      f"{item['price']:>8.2f}  {item['change_pct']:+.2f}%{w_s}")
+    return "\n".join(lines)
+
+
+def _color(val: float) -> str:
+    """涨跌颜色: 红涨绿跌"""
+    if val > 0:
+        return f'<font color="#e74c3c">+{val:.2f}%</font>'
+    return f'<font color="#27ae60">{val:.2f}%</font>'
+
+
+def build_report_html(stocks: list, results: dict, stats: dict) -> str:
+    """HTML 版 (微信推送用, 带红涨绿跌)"""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    lines = [
+        f'<h3>全球龙头行情日报 ({now})</h3>',
+        f'<p>成功 {stats["success"]} | 待重试 {stats["pending"]} | '
+        f'<font color="#e74c3c">上涨 {stats["up"]}</font> | '
+        f'<font color="#27ae60">下跌 {stats["down"]}</font></p>',
+        "<hr>",
+    ]
+
+    items = list(results.values())
+    sorted_up = sorted(items, key=lambda x: x["change_pct"], reverse=True)
+    sorted_down = sorted(items, key=lambda x: x["change_pct"])
+
+    # TOP 10
+    lines.append("<b>涨幅 TOP 10</b><br>")
+    for item in sorted_up[:10]:
+        lines.append(f'{item["name"]} {item["price"]:.2f} {_color(item["change_pct"])}<br>')
+    lines.append("<br><b>跌幅 TOP 10</b><br>")
+    for item in sorted_down[:10]:
+        lines.append(f'{item["name"]} {item["price"]:.2f} {_color(item["change_pct"])}<br>')
+    lines.append("<hr>")
+
+    # 按板块分组
+    for sector_name, group in _sector_items(stocks, results):
+        lines.append(f"")
+        lines.append(f'<b>【{sector_name}】</b><br>')
+        for name, sym, item in group:
+            wk = item.get("week_change")
+            wk_s = f' 周{_color(wk)}' if wk else ""
+            lines.append(
+                f'{name} {item["price"]:.2f} {_color(item["change_pct"])}{wk_s}<br>')
+        lines.append("<br>")
 
     return "\n".join(lines)
 
@@ -403,38 +446,34 @@ def finish(stocks: list, results: dict, pending: list):
     print(f"\n{'=' * 60}")
     print(f"采集完成: 成功 {success}/{total}  |  上涨 {up}  下跌 {down}")
 
-    # Markdown 报告
-    md_report = build_report(results, stats)
-    report_path = "report.md"
-    with open(report_path, "w", encoding="utf-8") as f:
+    # Markdown 报告（板块分组 + 红绿箭头）
+    md_report = build_report(stocks, results, stats)
+    with open("report.md", "w", encoding="utf-8") as f:
         f.write(md_report)
-    print(f"[保存] {report_path}")
+    print(f"[保存] report.md")
 
-    # 纯文本版（微信推送用）
-    txt_report = build_report_text(results, stats)
-    txt_path = "report.txt"
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(txt_report)
-    print(f"[保存] {txt_path}")
+    # HTML 报告（微信推送用, 带红涨绿跌颜色）
+    html_report = build_report_html(stocks, results, stats)
+    with open("report.html", "w", encoding="utf-8") as f:
+        f.write(html_report)
+    print(f"[保存] report.html")
 
-    # 控制台预览（前 30 行）
-    preview = "\n".join(txt_report.splitlines()[:30])
-    print(f"\n{preview}")
-    print(f"\n... (完整报告见 report.md / report.txt)")
+    # 控制台预览
+    simple = ["全球龙头行情日报 " + datetime.now().strftime("%Y-%m-%d %H:%M"),
+              "=" * 55, f"成功:{success}  待重试:{len(pending)}  上涨:{up}  下跌:{down}"]
+    print("\n".join(simple))
 
     if pending:
-        print(f"\n[待重试] {len(pending)} 只:")
         name_map = {s["symbol"]: s["name"] for s in stocks}
-        for sym in pending[:15]:
+        print(f"\n[待重试] {len(pending)} 只 (前10):")
+        for sym in pending[:10]:
             print(f"  - {name_map.get(sym, sym)} ({sym})")
-        if len(pending) > 15:
-            print(f"  ... 共 {len(pending)} 只")
 
-    # 推送
+    # 微信推送 (HTML 彩色版)
     push_wx(
         f"全球龙头行情日报 ({datetime.now().strftime('%m-%d')})",
-        txt_report,
-        template="html",  # PushPlus 纯文本用 html 模板
+        html_report,
+        template="html",
     )
 
     if success < total * 0.2:
