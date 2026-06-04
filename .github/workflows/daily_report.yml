@@ -1,29 +1,29 @@
 name: 全球龙头行情日报
 
 on:
-  # ── 定时推送 ──
   schedule:
-    - cron: '30 0 * * 1-5'    # 北京时间 8:30 (UTC 0:30) — 采集+推送
-    - cron: '0 5 * * 1-5'     # 北京时间 13:00 (UTC 5:00) — 仅推送缓存
-
-  # ── 手动触发 (GitHub 网页/App 点 Run workflow) ──
+    - cron: '30 0 * * 1-5'
+    - cron: '0 5 * * 1-5'
   workflow_dispatch:
     inputs:
       push_only:
         description: '只推送不采集（使用已有缓存）'
         type: boolean
         default: false
+  repository_dispatch:
+    types: [push_report]
+
+# ⚡ 提前适配 Node.js 24
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   report:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 设置 Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -40,8 +40,7 @@ jobs:
         with:
           path: cache/
           key: stock-cache-${{ github.run_id }}
-          restore-keys: |
-            stock-cache-
+          restore-keys: stock-cache-
 
       - name: 运行行情采集与推送
         env:
@@ -51,16 +50,14 @@ jobs:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           STOOQ_API_KEY: ${{ secrets.STOOQ_API_KEY }}
           REQUEST_INTERVAL: ${{ vars.REQUEST_INTERVAL || '0.35' }}
-          REPORT_FORMAT: markdown
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 5 * * 1-5" ]; then
-            # 13:00 定时: 只用缓存推送, 不重新采集
+            python main.py --push-only
+          elif [ "${{ github.event_name }}" = "repository_dispatch" ]; then
             python main.py --push-only
           elif [ "${{ github.event.inputs.push_only }}" = "true" ]; then
-            # 手动触发选了 push_only
             python main.py --push-only
           else
-            # 8:30 定时 / 手动触发默认: 完整采集+推送
             python main.py
           fi
 
