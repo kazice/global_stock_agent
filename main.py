@@ -18,23 +18,41 @@ def route_symbol(symbol: str) -> str:
          "AS":"stooq","SR":"stooq","HK":"finnhub"}
     return m.get(suffix, "finnhub")
 FALLBACK_CHAIN = {"twse":["stooq"],"jquants":["stooq"],"akshare":[],"finnhub":["stooq"],"stooq":[]}
-SECTORS = [(0,60,"半导体"),(61,84,"锂电/电池材料"),(85,99,"汽车"),(100,110,"算力/服务器"),
-           (111,124,"互联网/软件"),(125,146,"屏幕/光学/电子制造"),(147,177,"医药/医疗"),
-           (178,188,"军工/航空"),(189,204,"能源/光伏"),(205,217,"金融"),(218,228,"通信"),
-           (229,240,"互联网平台"),(241,251,"工业/自动化"),(252,261,"工程机械"),
-           (262,271,"化工"),(272,281,"物流/运输"),(282,287,"消费")]
+# ============================================================
+# 板块分类: 优先按 symbol 精确匹配, 兜底按 watchlist 索引范围
+# 索引范围由 watchlist.json 按空行分隔的段落精确计算得出
+# ============================================================
+SECTORS = [
+    (  0,  57, "半导体"),           # 58支: 台积电~通富微电
+    ( 58,  80, "锂电/电池材料"),    # 23支: 雅保~拓普集团
+    ( 81,  95, "汽车"),             # 15支: 特斯拉~赛力斯
+    ( 96, 106, "算力/服务器"),      # 11支: 超微电脑~新易盛
+    (107, 120, "互联网/软件"),      # 14支: 微软~索尼
+    (121, 142, "屏幕/光学/电子制造"),  # 22支: LG显示~华硕
+    (143, 172, "医药/医疗"),        # 30支: 药明康德~联影医疗
+    (173, 182, "军工/航空"),        # 10支: 波音~中航沈飞
+    (183, 197, "能源/光伏"),        # 15支: 埃克森美孚~西门子能源
+    (198, 209, "金融"),             # 12支: 摩根大通~招商银行
+    (210, 219, "通信"),             # 10支: 中兴通讯~T-Mobile
+    (220, 230, "互联网平台"),       # 11支: 拼多多~B站
+    (231, 240, "工业/自动化"),      # 10支: 发那科~三菱电机
+    (241, 249, "工程机械"),         # 9支: 卡特彼勒~阿特拉斯科普柯
+    (250, 258, "化工"),             # 9支: 陶氏~阿克苏诺贝尔
+    (259, 267, "物流/运输"),        # 9支: UPS~商船三井
+    (268, 272, "消费"),             # 5支: LVMH~耐克
+]
 
-# 明显分类错误的 symbol → 手动修正
+# 在所属板块范围内但分类明显不合理的 symbol → 手动修正
 SECTOR_OVERRIDES = {
-    "SONY": "消费电子",
-    "300124.SZ": "工业/自动化",    # 汇川技术 (伺服/PLC)
-    "002050.SZ": "汽车",           # 三花智控 (汽车热管理)
-    "601689.SH": "汽车",           # 拓普集团 (汽车底盘)
-    "CSCO": "通信",                # 思科 (网络设备)
-    "ANET": "通信",                # Arista (网络交换机)
-    "COHR": "通信",                # Coherent (光器件)
-    "300308.SZ": "通信",           # 中际旭创 (光模块)
-    "300502.SZ": "通信",           # 新易盛 (光模块)
+    "SONY": "消费电子",             # 索尼 → 不应在"互联网/软件"
+    "300124.SZ": "工业/自动化",     # 汇川技术 → 不应在"锂电/电池材料"
+    "002050.SZ": "汽车",            # 三花智控 → 不应在"锂电/电池材料"
+    "601689.SH": "汽车",            # 拓普集团 → 不应在"锂电/电池材料"
+    "CSCO": "通信",                 # 思科 → 不应在"算力/服务器"
+    "ANET": "通信",                 # Arista → 不应在"算力/服务器"
+    "COHR": "通信",                 # Coherent → 不应在"算力/服务器"
+    "300308.SZ": "通信",            # 中际旭创 → 不应在"算力/服务器"
+    "300502.SZ": "通信",            # 新易盛 → 不应在"算力/服务器"
 }
 
 def get_sector(i: int, symbol: str = "") -> str:
@@ -141,7 +159,7 @@ def _sector_items(stocks: list, results: dict):
 def build_report(stocks, results, stats):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [f"# 全球龙头行情日报 ({now})", "",
-             f"**成功** {stats['success']} | **待重试** {stats['pending']} | **上涨** {stats['up']} | **下跌** {stats['down']}", ""]
+             f"**成功** {stats['success']} | **待重试** {stats['pending']} | **上涨** {stats['up']} | **下跌** {stats['down']}"]
     items = list(results.values())
     su = sorted(items, key=lambda x: x["change_pct"], reverse=True)
     sd = sorted(items, key=lambda x: x["change_pct"])
@@ -150,26 +168,23 @@ def build_report(stocks, results, stats):
     for it in su[:10]:
         t = it.get("updated_at",""); ts = f" {t}" if t else ""
         lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['change_pct']:+.2f}%{ts} | {it['source']} |")
-    lines.append("")
     lines.append("## 今日跌幅 TOP 10"); lines.append("| 名称 | 代码 | 最新价 | 涨跌幅 | 时间 | 来源 |")
     lines.append("|------|------|--------|--------|------|------|")
     for it in sd[:10]:
         t = it.get("updated_at",""); ts = f" {t}" if t else ""
         lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['change_pct']:+.2f}%{ts} | {it['source']} |")
-    lines.append("")
     wk = [i for i in items if i.get("week_change") is not None]
     if wk:
         lines.append("## 近一周涨幅 TOP 10"); lines.append("| 名称 | 代码 | 最新价 | 周涨跌 | 来源 |")
         lines.append("|------|------|--------|--------|------|")
         for it in sorted(wk, key=lambda x: x["week_change"], reverse=True)[:10]:
             lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['week_change']:+.2f}% | {it['source']} |")
-        lines.append(""); lines.append("## 近一周跌幅 TOP 10")
+        lines.append("## 近一周跌幅 TOP 10")
         for it in sorted(wk, key=lambda x: x["week_change"])[:10]:
             lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['week_change']:+.2f}% | {it['source']} |")
-        lines.append("")
     lines.append("## 全量明细（按板块）")
     for sn, grp in _sector_items(stocks, results):
-        lines.append(""); lines.append(f"### {sn}")
+        lines.append(f"### {sn}")
         for name,sym,it in grp:
             t = it.get("updated_at",""); ts = f" [{t}]" if t else ""
             w = it.get("week_change"); ws = f" 周{w:+.2f}%" if w else ""
