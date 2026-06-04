@@ -67,15 +67,21 @@ class StooqAdapter(PriceAdapter):
             low = self._pf(fields[5]) or close
 
             prev_close = self._fetch_prev_close(symbol, stooq_sym)
-            prev = prev_close if (prev_close and prev_close > 0) else open_p
-            change = close - prev
-            change_pct = (change / prev * 100) if prev else 0
+            if prev_close and prev_close > 0:
+                change = close - prev_close
+                change_pct = change / prev_close * 100
+            else:
+                # 没有昨收 → 不计算涨跌幅（用 open 算的是日内波动, 不对）
+                prev_close = close
+                change = 0.0
+                change_pct = 0.0
 
             return {
                 "price": close, "change": round(change, 2),
                 "change_pct": round(change_pct, 2),
                 "open": open_p, "high": high, "low": low,
-                "prev_close": prev, "source": self.name,
+                "prev_close": prev_close, "source": self.name,
+                "updated_at": f"{fields[1]} {fields[2]}",
             }
         except Exception:
             return None
