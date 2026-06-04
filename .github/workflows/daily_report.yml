@@ -75,5 +75,5 @@ jobs:
           name: daily-report
           path: |
             report.md
-            report.txt
+            report.html
             cache/*.json
