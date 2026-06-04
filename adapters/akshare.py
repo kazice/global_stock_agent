@@ -61,7 +61,7 @@ class AkShareAdapter(PriceAdapter):
             return None
 
     def fetch_history(self, symbol: str, days: int = 7) -> Optional[list]:
-        """A 股历史用 stock_zh_a_hist (若失败返回 None)"""
+        """A 股历史用 stock_zh_a_hist (可能被公司墙, 失败返回 None)"""
         code = symbol.split(".")[0]
         ak = self._get_ak()
         if ak is None:
