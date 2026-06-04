@@ -3,6 +3,7 @@ Finnhub 适配器 - 美股 / 港股 / 欧股 ADR
 免费版: 60次/分钟, 支持美股及部分国际股票
 """
 import time
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -33,6 +34,8 @@ class FinnhubAdapter(PriceAdapter):
             cur = data.get("c")
             if cur is None or cur == 0:
                 return None
+            ts = data.get("t", 0)
+            updated = datetime.fromtimestamp(ts).strftime("%m-%d %H:%M") if ts else ""
             return {
                 "price": cur,
                 "change": data.get("d", 0),
@@ -42,6 +45,7 @@ class FinnhubAdapter(PriceAdapter):
                 "low": data.get("l", cur),
                 "prev_close": data.get("pc", cur),
                 "source": self.name,
+                "updated_at": updated,
             }
         except Exception:
             return None
