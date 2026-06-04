@@ -23,7 +23,25 @@ SECTORS = [(0,60,"半导体"),(61,84,"锂电/电池材料"),(85,99,"汽车"),(10
            (178,188,"军工/航空"),(189,204,"能源/光伏"),(205,217,"金融"),(218,228,"通信"),
            (229,240,"互联网平台"),(241,251,"工业/自动化"),(252,261,"工程机械"),
            (262,271,"化工"),(272,281,"物流/运输"),(282,287,"消费")]
-def get_sector(i: int) -> str:
+
+# 明显分类错误的 symbol → 手动修正
+SECTOR_OVERRIDES = {
+    "SONY": "消费电子",
+    "300124.SZ": "工业/自动化",    # 汇川技术 (伺服/PLC)
+    "002050.SZ": "汽车",           # 三花智控 (汽车热管理)
+    "601689.SH": "汽车",           # 拓普集团 (汽车底盘)
+    "CSCO": "通信",                # 思科 (网络设备)
+    "ANET": "通信",                # Arista (网络交换机)
+    "COHR": "通信",                # Coherent (光器件)
+    "300308.SZ": "通信",           # 中际旭创 (光模块)
+    "300502.SZ": "通信",           # 新易盛 (光模块)
+}
+
+def get_sector(i: int, symbol: str = "") -> str:
+    # 优先使用 symbol 精确覆盖
+    if symbol and symbol in SECTOR_OVERRIDES:
+        return SECTOR_OVERRIDES[symbol]
+    # 兜底: 按索引范围
     for s,e,n in SECTORS:
         if s <= i <= e: return n
     return "其他"
@@ -110,10 +128,11 @@ def _sector_items(stocks: list, results: dict):
     groups = {}
     for i,s in enumerate(stocks):
         if s["symbol"] not in results: continue
-        sec = get_sector(i)
+        sec = s.get("sector") or get_sector(i, symbol=s["symbol"])
         groups.setdefault(sec, []).append((s["name"], s["symbol"], results[s["symbol"]]))
+    sector_order = [sn for _,_,sn in SECTORS] + ["消费电子"]
     ordered, seen = [], set()
-    for _,_,sn in SECTORS:
+    for sn in sector_order:
         if sn in groups: ordered.append((sn, groups[sn])); seen.add(sn)
     for sn in groups:
         if sn not in seen: ordered.append((sn, groups[sn]))
@@ -201,6 +220,18 @@ def finish(stocks, results, pending):
     up = sum(1 for r in results.values() if r.get("change_pct",0) > 0); down = success-up
     stats = {"success":success,"pending":len(pending),"up":up,"down":down}
     print(f"\n{'='*60}\n采集完成: 成功 {success}/{total}  |  上涨 {up}  下跌 {down}")
+    if pending:
+        nm = {s["symbol"]:s["name"] for s in stocks}
+        rt_map = {s["symbol"]:route_symbol(s["symbol"]) for s in stocks}
+        print(f"\n[待重试] {len(pending)} 只:")
+        by_route = {}
+        for sym in pending:
+            r = rt_map.get(sym, "?")
+            by_route.setdefault(r, []).append(f"  {nm.get(sym,sym)} ({sym})")
+        for route, items in sorted(by_route.items()):
+            print(f"  数据源 [{route}]: {len(items)} 只")
+            for item in items[:5]: print(item)
+            if len(items) > 5: print(f"    ... 还有 {len(items)-5} 只")
     md = build_report(stocks, results, stats)
     with open("report.md","w",encoding="utf-8") as f: f.write(md)
     print("[保存] report.md")
@@ -208,10 +239,6 @@ def finish(stocks, results, pending):
     with open("report.html","w",encoding="utf-8") as f: f.write(html)
     print("[保存] report.html")
     print(f"全球龙头行情日报 {datetime.now().strftime('%Y-%m-%d %H:%M')}\n{'='*55}\n成功:{success}  待重试:{len(pending)}  上涨:{up}  下跌:{down}")
-    if pending:
-        nm = {s["symbol"]:s["name"] for s in stocks}
-        print(f"\n[待重试] {len(pending)} 只 (前10):")
-        for sym in pending[:10]: print(f"  - {nm.get(sym,sym)} ({sym})")
     push_wx(f"全球龙头行情日报 ({datetime.now().strftime('%m-%d')})", html, template="html")
     if success < total * 0.2: print("[警告] 成功率低于20%"); sys.exit(1)
 

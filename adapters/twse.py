@@ -6,6 +6,7 @@ TWSE官方实时报价 API:
   - 上柜: mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=otc_{code}.tw
   - 支持批量查询: 用 | 分隔
 """
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -72,6 +73,7 @@ class TWSEAdapter(PriceAdapter):
                 "low": float(item.get("l", "0").replace(",", "") or 0),
                 "prev_close": prev_close,
                 "source": self.name,
+                "updated_at": datetime.now().strftime("%m-%d %H:%M"),
             }
         except Exception:
             return None

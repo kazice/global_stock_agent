@@ -4,6 +4,7 @@ AkShare 适配器 - A 股 (SSE/SZSE/STAR)
 使用 stock_zh_a_spot() 新浪数据源 (公司网络也能通)
 首次调用会全量拉取一次(约30s), 之后走缓存
 """
+from datetime import datetime
 from typing import Optional
 
 from .base import PriceAdapter
@@ -56,6 +57,7 @@ class AkShareAdapter(PriceAdapter):
                 "low": float(item["最低"]),
                 "prev_close": prev_close,
                 "source": self.name,
+                "updated_at": datetime.now().strftime("%m-%d %H:%M"),
             }
         except Exception:
             return None

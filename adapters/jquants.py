@@ -8,6 +8,7 @@ J-Quants 是日本交易所集团官方免费 API
 import json
 import os
 import time
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -147,6 +148,7 @@ class JQuantsAdapter(PriceAdapter):
                 "low": float(latest.get("Low", 0)),
                 "prev_close": prev_close,
                 "source": self.name,
+                "updated_at": datetime.now().strftime("%m-%d %H:%M"),
             }
         except Exception:
             return None
