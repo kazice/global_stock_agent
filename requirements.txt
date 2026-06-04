@@ -1,0 +1,5 @@
+requests>=2.25.0
+python-dotenv>=1.0.0
+
+# A 股数据源 (GitHub Actions 自动安装)
+akshare>=1.14.0
