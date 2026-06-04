@@ -15,6 +15,7 @@ cache/*.json
 # 报告 (CI 自动生成, 本地不必提交)
 report.md
 report.txt
+report.html
 
 # IDE
 .idea/
