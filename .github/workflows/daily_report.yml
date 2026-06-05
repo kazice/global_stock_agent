@@ -58,7 +58,7 @@ jobs:
           elif [ "${{ github.event.inputs.push_only }}" = "true" ]; then
             python main.py --push-only
           else
-            python main.py
+            FORCE_REFRESH=1 python main.py
           fi
 
       - name: 保存当天缓存
