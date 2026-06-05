@@ -8,12 +8,11 @@ J-Quants 是日本交易所集团官方免费 API
 import json
 import os
 import time
-from datetime import datetime
 from typing import Optional
 
 import requests
 
-from .base import PriceAdapter
+from .base import PriceAdapter, beijing_now
 
 TOKEN_CACHE_FILE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), "cache", ".jquants_token.json"
@@ -148,7 +147,7 @@ class JQuantsAdapter(PriceAdapter):
                 "low": float(latest.get("Low", 0)),
                 "prev_close": prev_close,
                 "source": self.name,
-                "updated_at": datetime.now().strftime("%m-%d %H:%M"),
+                "updated_at": beijing_now(),
             }
         except Exception:
             return None

@@ -3,12 +3,11 @@ Finnhub 适配器 - 美股 / 港股 / 欧股 ADR
 免费版: 60次/分钟, 支持美股及部分国际股票
 """
 import time
-from datetime import datetime
 from typing import Optional
 
 import requests
 
-from .base import PriceAdapter
+from .base import PriceAdapter, ts_to_beijing
 
 
 class FinnhubAdapter(PriceAdapter):
@@ -35,7 +34,7 @@ class FinnhubAdapter(PriceAdapter):
             if cur is None or cur == 0:
                 return None
             ts = data.get("t", 0)
-            updated = datetime.fromtimestamp(ts).strftime("%m-%d %H:%M") if ts else ""
+            updated = ts_to_beijing(ts)
             return {
                 "price": cur,
                 "change": data.get("d", 0),

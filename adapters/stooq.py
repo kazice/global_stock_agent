@@ -9,7 +9,7 @@ from typing import Optional
 
 import requests
 
-from .base import PriceAdapter
+from .base import PriceAdapter, utc_to_beijing
 
 
 class StooqAdapter(PriceAdapter):
@@ -81,7 +81,7 @@ class StooqAdapter(PriceAdapter):
                 "change_pct": round(change_pct, 2),
                 "open": open_p, "high": high, "low": low,
                 "prev_close": prev_close, "source": self.name,
-                "updated_at": f"{fields[1]} {fields[2]}",
+                "updated_at": utc_to_beijing(fields[1], fields[2]),
             }
         except Exception:
             return None

@@ -6,7 +6,48 @@
   - fetch_history(symbol, days) → list[dict] | None
 """
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone, timedelta
 from typing import Optional
+
+# 北京时区 (UTC+8)
+BJ_TZ = timezone(timedelta(hours=8))
+
+def beijing_now() -> str:
+    """返回当前北京时间字符串 (MM-DD HH:MM)"""
+    return datetime.now(BJ_TZ).strftime("%m-%d %H:%M")
+
+def utc_to_beijing(utc_dt_str: str, utc_time_str: str) -> str:
+    """
+    将 Stooq 返回的 UTC 日期时间转为北京时间字符串 (MM-DD HH:MM)
+    支持多种输入格式:
+      date="2026-06-05", time="03:19:00"
+      date="0605",       time="03:19"
+    """
+    dt_str = utc_dt_str.strip()
+    tm_str = utc_time_str.strip()
+    now = datetime.now(BJ_TZ)
+    # 尝试多种日期/时间格式组合
+    formats = [
+        (f"{dt_str} {tm_str}", "%Y-%m-%d %H:%M:%S"),
+        (f"{dt_str} {tm_str}", "%Y-%m-%d %H:%M"),
+        (f"{now.year}{dt_str} {tm_str}", "%Y%m%d %H:%M:%S"),
+        (f"{now.year}{dt_str} {tm_str}", "%Y%m%d %H:%M"),
+    ]
+    for s, fmt in formats:
+        try:
+            dt = datetime.strptime(s, fmt)
+            dt = dt.replace(tzinfo=timezone.utc).astimezone(BJ_TZ)
+            return dt.strftime("%m-%d %H:%M")
+        except (ValueError, IndexError):
+            continue
+    return ""
+
+def ts_to_beijing(ts: int) -> str:
+    """将 Unix 时间戳转为北京时间字符串 (MM-DD HH:MM)"""
+    if not ts:
+        return ""
+    dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(BJ_TZ)
+    return dt.strftime("%m-%d %H:%M")
 
 
 class PriceAdapter(ABC):
