@@ -184,11 +184,13 @@ def build_report(stocks, results, stats):
             lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['week_change']:+.2f}% | {it['source']} |")
     lines.append("## 全量明细（按板块）")
     for sn, grp in _sector_items(stocks, results):
-        lines.append(f"### {sn}")
+        up = sum(1 for _,_,it in grp if it.get("change_pct",0) > 0)
+        dn = len(grp) - up
+        lines.append(f"### {sn} (↑{up} ↓{dn})")
         for name,sym,it in grp:
             t = it.get("updated_at",""); ts = f" [{t}]" if t else ""
             w = it.get("week_change"); ws = f" 周{w:+.2f}%" if w else ""
-            lines.append(f"- {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ts}{ws} [{it['source']}]")
+            lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ts}{ws} [{it['source']}]")
     return "\n".join(lines)
 
 def _color(v: float) -> str:
@@ -211,7 +213,9 @@ def build_report_html(stocks, results, stats):
         lines.append(f'{it["name"]} {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
     lines.append("<hr>")
     for sn, grp in _sector_items(stocks, results):
-        lines.append(f'<b>\u3010{sn}\u3011</b><br>')
+        up = sum(1 for _,_,it in grp if it.get("change_pct",0) > 0)
+        dn = len(grp) - up
+        lines.append(f'<b>【{sn}】↑{up}↓{dn}</b><br>')
         for name,_,it in grp:
             t = it.get("updated_at",""); ts = f" ({t})" if t else ""
             wk = it.get("week_change"); wks = f' \u5468{_color(wk)}' if wk else ""
