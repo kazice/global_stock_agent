@@ -59,7 +59,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 5 * * 1-5" ]; then
             python main.py --push-only
-          elif [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+          elif [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.client_payload.push_only }}" = "true" ]; then
             python main.py --push-only
           elif [ "${{ github.event.inputs.push_only }}" = "true" ]; then
             python main.py --push-only
