@@ -130,9 +130,9 @@ def get_weekly_change(sym: str, adpts: dict, rt: str, cur_p: float, days: int = 
         a = adpts.get(nm)
         if a is None: continue
         try:
-            h = a.fetch_history(sym, days*2)
+            h = a.fetch_history(sym, days + 1)
             if h and len(h) >= 2:
-                l = h[-1]["close"]; wa = h[0]["close"]
+                l = h[-1]["close"]; wa = h[0]["close"]  # h[0]=5天前, h[-1]=今天
                 if wa and l > 0: return round((l-wa)/wa*100,2)
         except: pass
     try:
