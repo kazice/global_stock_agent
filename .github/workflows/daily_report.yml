@@ -1,12 +1,6 @@
 name: 全球龙头行情日报
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'cache/**'
-      - 'report.md'
-      - 'report.html'
   schedule:
     - cron: '30 0 * * 1-5'
     - cron: '0 5 * * 1-5'
