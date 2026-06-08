@@ -206,20 +206,20 @@ def build_report_html(stocks, results, stats):
     lines.append("<b>涨幅 TOP 10</b><br>")
     for it in su[:10]:
         t = it.get("updated_at",""); ts = f" ({t})" if t else ""
-        lines.append(f'{it["name"]} {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
+        lines.append(f'{it["name"]} [{it["symbol"]}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
     lines.append("<br><b>跌幅 TOP 10</b><br>")
     for it in sd[:10]:
         t = it.get("updated_at",""); ts = f" ({t})" if t else ""
-        lines.append(f'{it["name"]} {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
+        lines.append(f'{it["name"]} [{it["symbol"]}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
     lines.append("<hr>")
     for sn, grp in _sector_items(stocks, results):
         up = sum(1 for _,_,it in grp if it.get("change_pct",0) > 0)
         dn = len(grp) - up
         lines.append(f'<b>【{sn}】↑{up}↓{dn}</b><br>')
-        for name,_,it in grp:
+        for name,sym,it in grp:
             t = it.get("updated_at",""); ts = f" ({t})" if t else ""
             wk = it.get("week_change"); wks = f' \u5468{_color(wk)}' if wk else ""
-            lines.append(f'{name} {it["price"]:.2f} {_color(it["change_pct"])}{ts}{wks}<br>')
+            lines.append(f'{name} [{sym}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}{wks}<br>')
         lines.append("<br>")
     return "\n".join(lines)
 
