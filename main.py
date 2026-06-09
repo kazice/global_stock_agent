@@ -15,9 +15,9 @@ def route_symbol(symbol: str) -> str:
     m = {"TW":"twse","TWO":"twse","T":"jquants","KS":"stooq",
          "SH":"akshare","SZ":"akshare","DE":"stooq","PA":"stooq",
          "SW":"stooq","L":"stooq","ST":"stooq","CO":"stooq",
-         "AS":"stooq","SR":"stooq","HK":"finnhub"}
+         "AS":"stooq","SR":"stooq","HK":"akshare"}
     return m.get(suffix, "finnhub")
-FALLBACK_CHAIN = {"twse":["stooq"],"jquants":["stooq"],"akshare":[],"finnhub":["stooq"],"stooq":[]}
+FALLBACK_CHAIN = {"twse":["stooq"],"jquants":["stooq"],"akshare":["stooq"],"finnhub":["stooq"],"stooq":[]}
 # ============================================================
 # 板块分类: 优先按 symbol 精确匹配, 兜底按 watchlist 索引范围
 # 索引范围由 watchlist.json 按空行分隔的段落精确计算得出
