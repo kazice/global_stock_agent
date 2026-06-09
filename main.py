@@ -197,7 +197,7 @@ def build_report(stocks, results, stats):
 def _color(v: float) -> str:
     return f'<font color="#e74c3c">+{v:.2f}%</font>' if v > 0 else f'<font color="#27ae60">{v:.2f}%</font>'
 
-def build_report_html(stocks, results, stats):
+def build_report_html(stocks, results, stats, pending=None):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [f'<h3>全球龙头行情日报 ({now})</h3>',
              f'<p>成功 {stats["success"]} | 待重试 {stats["pending"]} | <font color="#e74c3c">上涨 {stats["up"]}</font> | <font color="#27ae60">下跌 {stats["down"]}</font></p><hr>']
@@ -222,6 +222,11 @@ def build_report_html(stocks, results, stats):
             wk = it.get("week_change"); wks = f' \u5468{_color(wk)}' if wk else ""
             lines.append(f'{name} [{sym}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}{wks}<br>')
         lines.append("<br>")
+    if pending:
+        nm = {s["symbol"]: s["name"] for s in stocks}
+        lines.append(f'<b>【待重试】{len(pending)} 支</b><br>')
+        for sym in pending:
+            lines.append(f'{nm.get(sym, sym)} [{sym}]<br>')
     return "\n".join(lines)
 
 def push_wx(title: str, content: str, template: str = "markdown"):
@@ -255,7 +260,7 @@ def finish(stocks, results, pending):
     md = build_report(stocks, results, stats)
     with open("report.md","w",encoding="utf-8") as f: f.write(md)
     print("[保存] report.md")
-    html = build_report_html(stocks, results, stats)
+    html = build_report_html(stocks, results, stats, pending=pending)
     with open("report.html","w",encoding="utf-8") as f: f.write(html)
     print("[保存] report.html")
     print(f"全球龙头行情日报 {datetime.now().strftime('%Y-%m-%d %H:%M')}\n{'='*55}\n成功:{success}  待重试:{len(pending)}  上涨:{up}  下跌:{down}")
