@@ -132,8 +132,9 @@ def get_weekly_change(sym: str, adpts: dict, rt: str, cur_p: float, days: int = 
         try:
             h = a.fetch_history(sym, days + 1)
             if h and len(h) >= 2:
-                l = h[-1]["close"]; wa = h[0]["close"]  # h[0]=5天前, h[-1]=今天
-                if wa and l > 0: return round((l-wa)/wa*100,2)
+                wa = h[0]["close"]  # h[0]=5个交易日前收盘价
+                # 用 cur_p(实时报价)而非 h[-1](历史收盘),避免美股历史数据未更新导致偏差
+                if wa > 0: return round((cur_p-wa)/wa*100,2)
         except: pass
     try:
         cs = load_close_history(sym, n=days)
