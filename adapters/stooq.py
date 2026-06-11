@@ -19,7 +19,7 @@ class StooqAdapter(PriceAdapter):
 
     # watchlist 后缀 → Stooq 后缀 (实测)
     SUFFIX_MAP = {
-        "TW": "tw", "TWO": "two",
+        "TW": "tw", "TWO": "tw",
         "T": "jp",
         "DE": "de",
         "PA": "fr",
