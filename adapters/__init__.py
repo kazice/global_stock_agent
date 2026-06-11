@@ -2,9 +2,10 @@
 
 from .finnhub import FinnhubAdapter
 from .twse import TWSEAdapter
+from .twstock_adapter import TWStockAdapter
 from .jquants import JQuantsAdapter
 from .stooq import StooqAdapter
 from .sinahk import HKAdapter
 from .yahoo import YahooAdapter
 
-__all__ = ["FinnhubAdapter", "TWSEAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter"]
+__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter"]

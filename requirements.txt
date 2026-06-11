@@ -3,3 +3,6 @@ python-dotenv>=1.0.0
 
 # A 股数据源 (GitHub Actions 自动安装)
 akshare>=1.14.0
+
+# 台股数据源 (纯Python, TWSE官方数据)
+twstock>=1.5.1
