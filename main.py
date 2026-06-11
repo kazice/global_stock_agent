@@ -7,17 +7,17 @@ from datetime import datetime
 from typing import Optional
 import requests
 import config
-from adapters import FinnhubAdapter, TWSEAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter
+from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter
 
 def route_symbol(symbol: str) -> str:
     if "." not in symbol: return "finnhub"
     suffix = symbol.rsplit(".", 1)[-1].upper()
-    m = {"TW":"twse","TWO":"twse","T":"jquants","KS":"stooq",
+    m = {"TW":"twse","TWO":"twse","T":"stooq","KS":"stooq",
          "SH":"akshare","SZ":"akshare","DE":"stooq","PA":"stooq",
          "SW":"stooq","L":"stooq","ST":"stooq","CO":"stooq",
          "AS":"stooq","SR":"stooq","HK":"hk"}
     return m.get(suffix, "finnhub")
-FALLBACK_CHAIN = {"twse":["stooq","yahoo"],"jquants":["stooq","yahoo"],"akshare":["stooq","yahoo"],"hk":["stooq","yahoo"],"finnhub":["stooq","yahoo"],"stooq":["yahoo"]}
+FALLBACK_CHAIN = {"twse":["twstock","stooq","yahoo"],"twstock":["stooq","yahoo"],"jquants":["yahoo"],"akshare":["stooq","yahoo"],"hk":["stooq","yahoo"],"finnhub":["stooq","yahoo"],"stooq":["jquants","yahoo"]}
 # ============================================================
 # 板块分类: 优先按 symbol 精确匹配, 兜底按 watchlist 索引范围
 # 索引范围由 watchlist.json 按空行分隔的段落精确计算得出
@@ -356,7 +356,8 @@ def main():
         else: print("[完成] 全部已缓存"); finish(stocks,rc,pc); return
     else: fs, rs, pd = list(stocks), {}, []
     adpts = {"finnhub":FinnhubAdapter(config.FINNHUB_API_KEY,config.FINNHUB_BASE),
-             "twse":TWSEAdapter(),"jquants":JQuantsAdapter(),
+             "twse":TWSEAdapter(),"twstock":TWStockAdapter(),
+             "jquants":JQuantsAdapter(),
              "stooq":StooqAdapter(api_key=config.STOOQ_API_KEY),
              "hk":HKAdapter(),
              "yahoo":YahooAdapter()}
