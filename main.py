@@ -125,22 +125,40 @@ def fetch_with_fallback(sym: str, adpts: dict, rt: str) -> Optional[dict]:
             if r: r["source"] = "finnhub(ADR)"; return r
     return None
 
-def get_weekly_change(sym: str, adpts: dict, rt: str, cur_p: float, days: int = 5) -> Optional[float]:
-    for nm in [rt] + FALLBACK_CHAIN.get(rt,[]):
+def get_weekly_change(sym: str, adpts: dict, cur_p: float,
+                      src_nm: str = "", days: int = 5) -> Optional[float]:
+    """
+    计算周涨跌幅。
+    src_nm: 成功获取实时报价的适配器名称, 优先用它查历史(保证币种一致)
+    """
+    # 优先用报价同一适配器的历史数据
+    candidates = [src_nm] if src_nm else []
+    candidates += [nm for nm in adpts if nm != src_nm]
+    for nm in candidates:
         a = adpts.get(nm)
-        if a is None: continue
+        if a is None:
+            continue
         try:
             h = a.fetch_history(sym, days + 1)
             if h and len(h) >= 2:
-                wa = h[0]["close"]  # h[0]=5个交易日前收盘价
-                # 用 cur_p(实时报价)而非 h[-1](历史收盘),避免美股历史数据未更新导致偏差
-                if wa > 0: return round((cur_p-wa)/wa*100,2)
-        except: pass
+                wa = h[0]["close"]
+                if wa > 0:
+                    pct = round((cur_p - wa) / wa * 100, 2)
+                    # 单周涨跌幅超过 50% 几乎肯定是数据源交叉错位, 丢弃
+                    if abs(pct) > 50:
+                        continue
+                    return pct
+        except:
+            pass
+    # 兜底: 缓存
     try:
         cs = load_close_history(sym, n=days)
         if cs and len(cs) >= 2 and cs[0] > 0:
-            return round((cur_p-cs[0])/cs[0]*100,2)
-    except: pass
+            pct = round((cur_p - cs[0]) / cs[0] * 100, 2)
+            if abs(pct) <= 50:
+                return pct
+    except:
+        pass
     return None
 
 def _sector_items(stocks: list, results: dict):
@@ -353,7 +371,9 @@ def main():
         q = fetch_with_fallback(sym, adpts, rt)
         if q:
             q["name"] = stk["name"]; q["symbol"] = sym
-            wc = get_weekly_change(sym, adpts, rt, q["price"])
+            # 从 source 中提取适配器名称(去掉 fallback/ADR 后缀)
+            src = q.get("source", "").split("(")[0].strip()
+            wc = get_weekly_change(sym, adpts, q["price"], src_nm=src)
             if wc is not None: q["week_change"] = wc
             rs[sym] = q
             print(f"  {'+' if q.get('change',0)>=0 else ''}{q['price']:.2f}  {q['change_pct']:+.2f}%  [{q['source']}]")
