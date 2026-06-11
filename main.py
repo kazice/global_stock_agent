@@ -223,34 +223,40 @@ def build_report_html(stocks, results, stats, pending=None):
     su = sorted(items, key=lambda x: x["change_pct"], reverse=True)
     sd = sorted(items, key=lambda x: x["change_pct"])
 
-    # TOP 10
-    lines.append("<b>涨幅 TOP 10</b><br>")
-    for it in su[:10]:
-        lines.append(f'{it["name"]} [{it["symbol"]}] {_color(it["change_pct"])} 周{_wk_color(it.get("week_change"))}<br>')
-    lines.append("<br><b>跌幅 TOP 10</b><br>")
-    for it in sd[:10]:
-        lines.append(f'{it["name"]} [{it["symbol"]}] {_color(it["change_pct"])} 周{_wk_color(it.get("week_change"))}<br>')
+    # 样式: 紧凑大字体居中对齐
+    T = 'style="font-size:15px;text-align:center;padding:2px 6px"'
+    TH = 'style="font-size:15px;font-weight:bold;text-align:center;padding:3px 6px;background:#eee"'
+
+    # TOP 10 (表格)
+    for title, data in [("涨幅 TOP 10", su), ("跌幅 TOP 10", sd)]:
+        lines.append(f'<b>{title}</b>')
+        lines.append(f'<table border="0" cellpadding="0" cellspacing="0" width="100%">'
+                     f'<tr><td {TH}>名称</td><td {TH}>代码</td><td {TH}>涨跌幅</td><td {TH}>周涨跌</td></tr>')
+        for it in data[:10]:
+            lines.append(f'<tr><td {T}>{it["name"]}</td><td {T} style="font-size:13px;color:#555;text-align:center;padding:2px 6px">{it["symbol"]}</td>'
+                         f'<td {T}>{_color(it["change_pct"])}</td>'
+                         f'<td {T}>{_wk_color(it.get("week_change"))}</td></tr>')
+        lines.append('</table><br>')
 
     # 全量板块表格
-    lines.append('<hr><table border="0" cellpadding="4" cellspacing="0" width="100%" style="font-size:14px">')
-    lines.append('<tr style="background:#f5f5f5;font-weight:bold;text-align:center">'
-                 '<td>名称</td><td>代码</td><td>涨跌幅</td><td>周涨跌</td><td>板块</td><td>简介</td></tr>')
+    lines.append('<hr>')
+    lines.append(f'<table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size:15px">')
+    lines.append(f'<tr><td {TH} colspan="5">名称</td><td {TH}>代码</td><td {TH}>涨跌幅</td><td {TH}>周涨跌</td><td {TH}>简介</td></tr>')
     for ci, (sn, grp) in enumerate(_sector_items(stocks, results)):
         bg = SECTOR_COLORS[ci % len(SECTOR_COLORS)]
         up = sum(1 for _,_,it,_ in grp if it.get("change_pct",0) > 0)
         dn = len(grp) - up
-        # 板块标题行
-        lines.append(f'<tr style="background:{bg};font-weight:bold"><td colspan="6">【{sn}】↑{up}↓{dn}</td></tr>')
+        lines.append(f'<tr><td colspan="9" style="font-size:15px;font-weight:bold;text-align:left;padding:3px 6px;background:{bg}">【{sn}】↑{up}↓{dn}</td></tr>')
         for name, sym, it, desc in grp:
             wk = it.get("week_change")
             d = _wk_color(wk)
             desc_txt = desc if desc else "—"
-            lines.append(f'<tr style="background:{bg}">'
-                         f'<td>{name}</td><td style="font-size:12px;color:#555">{sym}</td>'
-                         f'<td>{_color(it["change_pct"])}</td>'
-                         f'<td>{d}</td>'
-                         f'<td style="font-size:12px;color:#888">{sn}</td>'
-                         f'<td style="font-size:11px;color:#999;max-width:120px">{desc_txt}</td></tr>')
+            lines.append(f'<tr style="text-align:center;background:{bg}">'
+                         f'<td colspan="5" style="font-size:15px;padding:2px 6px;text-align:left">{name}</td>'
+                         f'<td style="font-size:13px;color:#555;padding:2px 6px">{sym}</td>'
+                         f'<td style="font-size:15px;padding:2px 6px">{_color(it["change_pct"])}</td>'
+                         f'<td style="font-size:15px;padding:2px 6px">{d}</td>'
+                         f'<td style="font-size:12px;color:#999;padding:2px 6px">{desc_txt}</td></tr>')
     lines.append('</table>')
 
     if pending:
