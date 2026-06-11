@@ -148,7 +148,8 @@ def _sector_items(stocks: list, results: dict):
     for i,s in enumerate(stocks):
         if s["symbol"] not in results: continue
         sec = s.get("sector") or get_sector(i, symbol=s["symbol"])
-        groups.setdefault(sec, []).append((s["name"], s["symbol"], results[s["symbol"]]))
+        desc = s.get("desc", "")
+        groups.setdefault(sec, []).append((s["name"], s["symbol"], results[s["symbol"]], desc))
     sector_order = [sn for _,_,sn in SECTORS] + ["消费电子"]
     ordered, seen = [], set()
     for sn in sector_order:
@@ -185,46 +186,76 @@ def build_report(stocks, results, stats):
             lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['week_change']:+.2f}% | {it['source']} |")
     lines.append("## 全量明细（按板块）")
     for sn, grp in _sector_items(stocks, results):
-        up = sum(1 for _,_,it in grp if it.get("change_pct",0) > 0)
+        up = sum(1 for _,_,it,_ in grp if it.get("change_pct",0) > 0)
         dn = len(grp) - up
         lines.append(f"### {sn} (↑{up} ↓{dn})")
-        for name,sym,it in grp:
+        for name,sym,it,desc in grp:
             t = it.get("updated_at",""); ts = f" [{t}]" if t else ""
             w = it.get("week_change"); ws = f" 周{w:+.2f}%" if w else ""
-            lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ts}{ws} [{it['source']}]")
+            lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ws} [{it['source']}]")
     return "\n".join(lines)
+
+# 板块配色 (17 个板块各一个背景色)
+SECTOR_COLORS = [
+    "#e3f2fd", "#f3e5f5", "#fff3e0", "#e8f5e9", "#fbe9e7",
+    "#e0f7fa", "#fce4ec", "#e8eaf6", "#fff8e1", "#efebe9",
+    "#e0f2f1", "#fffde7", "#f1f8e9", "#e1f5fe", "#f9fbe7",
+    "#ede7f6", "#fce4ec",
+]
 
 def _color(v: float) -> str:
     return f'<font color="#e74c3c">+{v:.2f}%</font>' if v > 0 else f'<font color="#27ae60">{v:.2f}%</font>'
+
+def _wk_color(v: float) -> str:
+    """周涨跌颜色 (显示 "↑" "↓" 前缀)"""
+    if v is None:
+        return '<font color="#999">—</font>'
+    if v > 0:
+        return f'<font color="#e74c3c">↑{v:.2f}%</font>'
+    return f'<font color="#27ae60">↓{abs(v):.2f}%</font>'
 
 def build_report_html(stocks, results, stats, pending=None):
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [f'<h3>全球龙头行情日报 ({now})</h3>',
              f'<p>成功 {stats["success"]} | 待重试 {stats["pending"]} | <font color="#e74c3c">上涨 {stats["up"]}</font> | <font color="#27ae60">下跌 {stats["down"]}</font></p><hr>']
+
     items = list(results.values())
     su = sorted(items, key=lambda x: x["change_pct"], reverse=True)
     sd = sorted(items, key=lambda x: x["change_pct"])
+
+    # TOP 10
     lines.append("<b>涨幅 TOP 10</b><br>")
     for it in su[:10]:
-        t = it.get("updated_at",""); ts = f" ({t})" if t else ""
-        lines.append(f'{it["name"]} [{it["symbol"]}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
+        lines.append(f'{it["name"]} [{it["symbol"]}] {_color(it["change_pct"])} 周{_wk_color(it.get("week_change"))}<br>')
     lines.append("<br><b>跌幅 TOP 10</b><br>")
     for it in sd[:10]:
-        t = it.get("updated_at",""); ts = f" ({t})" if t else ""
-        lines.append(f'{it["name"]} [{it["symbol"]}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}<br>')
-    lines.append("<hr>")
-    for sn, grp in _sector_items(stocks, results):
-        up = sum(1 for _,_,it in grp if it.get("change_pct",0) > 0)
+        lines.append(f'{it["name"]} [{it["symbol"]}] {_color(it["change_pct"])} 周{_wk_color(it.get("week_change"))}<br>')
+
+    # 全量板块表格
+    lines.append('<hr><table border="0" cellpadding="4" cellspacing="0" width="100%" style="font-size:14px">')
+    lines.append('<tr style="background:#f5f5f5;font-weight:bold;text-align:center">'
+                 '<td>名称</td><td>代码</td><td>涨跌幅</td><td>周涨跌</td><td>板块</td><td>简介</td></tr>')
+    for ci, (sn, grp) in enumerate(_sector_items(stocks, results)):
+        bg = SECTOR_COLORS[ci % len(SECTOR_COLORS)]
+        up = sum(1 for _,_,it,_ in grp if it.get("change_pct",0) > 0)
         dn = len(grp) - up
-        lines.append(f'<b>【{sn}】↑{up}↓{dn}</b><br>')
-        for name,sym,it in grp:
-            t = it.get("updated_at",""); ts = f" ({t})" if t else ""
-            wk = it.get("week_change"); wks = f' \u5468{_color(wk)}' if wk else ""
-            lines.append(f'{name} [{sym}] {it["price"]:.2f} {_color(it["change_pct"])}{ts}{wks}<br>')
-        lines.append("<br>")
+        # 板块标题行
+        lines.append(f'<tr style="background:{bg};font-weight:bold"><td colspan="6">【{sn}】↑{up}↓{dn}</td></tr>')
+        for name, sym, it, desc in grp:
+            wk = it.get("week_change")
+            d = _wk_color(wk)
+            desc_txt = desc if desc else "—"
+            lines.append(f'<tr style="background:{bg}">'
+                         f'<td>{name}</td><td style="font-size:12px;color:#555">{sym}</td>'
+                         f'<td>{_color(it["change_pct"])}</td>'
+                         f'<td>{d}</td>'
+                         f'<td style="font-size:12px;color:#888">{sn}</td>'
+                         f'<td style="font-size:11px;color:#999;max-width:120px">{desc_txt}</td></tr>')
+    lines.append('</table>')
+
     if pending:
         nm = {s["symbol"]: s["name"] for s in stocks}
-        lines.append(f'<b>【待重试】{len(pending)} 支</b><br>')
+        lines.append(f'<hr><b>【待重试】{len(pending)} 支</b><br>')
         for sym in pending:
             lines.append(f'{nm.get(sym, sym)} [{sym}]<br>')
     return "\n".join(lines)
