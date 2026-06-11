@@ -36,8 +36,8 @@ class HKAdapter(PriceAdapter):
     def _try_tencent(self, code: str) -> Optional[dict]:
         """
         腾讯证券 API: https://qt.gtimg.cn/q=hk00700
-        返回: v_hk00700="name~open~prev_close~current~high~low~bid~ask~volume~amount~...";
-        字段以 ~ 分隔
+        实际字段索引(实测):
+          [1]=名称  [3]=当前价  [4]=昨收  [5]=开盘  [33]=最高  [34]=最低
         """
         try:
             r = requests.get(
@@ -51,10 +51,9 @@ class HKAdapter(PriceAdapter):
             if '"' not in text:
                 return None
             fields = text.split('"')[1].split("~")
-            # 腾讯返的字段: name, open, prev_close, current, high, low, bid, ask, volume, amount
-            if len(fields) < 6:
+            if len(fields) < 35:
                 return None
-            return self._parse(fields, 0, 1, 2, 3, 4, 5)
+            return self._parse(fields, idx_name=1, idx_open=5, idx_pc=4, idx_cur=3, idx_high=33, idx_low=34)
         except Exception:
             return None
 
