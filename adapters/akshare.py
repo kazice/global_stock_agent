@@ -1,9 +1,9 @@
 """
 AkShare 适配器 - A 股 (SSE/SZSE/STAR)
 
-使用 stock_zh_a_spot() 新浪数据源 (公司网络也能通)
-首次调用会全量拉取一次(约30s), 之后走缓存
+逐股查询 stock_zh_a_hist()，不再全量加载
 """
+import datetime
 from typing import Optional
 
 from .base import PriceAdapter, beijing_now
@@ -11,7 +11,6 @@ from .base import PriceAdapter, beijing_now
 
 class AkShareAdapter(PriceAdapter):
     name = "akshare"
-    _spot_df = None  # 类级别缓存, 全部 A 股共用
 
     def _get_ak(self):
         try:
@@ -26,32 +25,32 @@ class AkShareAdapter(PriceAdapter):
         if ak is None:
             return None
         try:
-            if self._spot_df is None:
-                print("  [AKShare] 首次加载 A 股全量行情...", flush=True)
-                df = ak.stock_zh_a_spot()
-                AkShareAdapter._spot_df = df
-            else:
-                df = self._spot_df
-
-            row = df[df["代码"].str.endswith(code)]
-            if row.empty:
+            end = datetime.date.today()
+            start = end - datetime.timedelta(days=7)
+            df = ak.stock_zh_a_hist(
+                symbol=code, period="daily",
+                start_date=start.strftime("%Y%m%d"),
+                end_date=end.strftime("%Y%m%d"),
+                adjust="qfq",
+            )
+            if df.empty:
                 return None
-            item = row.iloc[0]
-            cur = float(item["最新价"])
-            prev_close = float(item["昨收"])
-            if prev_close == 0:
-                return None
-            change = cur - prev_close
+            item = df.iloc[-1]  # 最新交易日
+            cur = float(item["收盘"])
             change_pct = float(item["涨跌幅"])
+
+            # 从涨跌幅反推昨收
+            prev_close = cur / (1 + change_pct / 100) if abs(change_pct) > 0 else cur
+            change = cur - prev_close
 
             return {
                 "price": cur,
                 "change": round(change, 2),
-                "change_pct": change_pct,
-                "open": float(item["今开"]),
+                "change_pct": round(change_pct, 2),
+                "open": float(item["开盘"]),
                 "high": float(item["最高"]),
                 "low": float(item["最低"]),
-                "prev_close": prev_close,
+                "prev_close": round(prev_close, 2),
                 "source": self.name,
                 "updated_at": beijing_now(),
             }
@@ -64,7 +63,6 @@ class AkShareAdapter(PriceAdapter):
         if ak is None:
             return None
         try:
-            import datetime
             end = datetime.date.today()
             start = end - datetime.timedelta(days=days * 2)
             df = ak.stock_zh_a_hist(
