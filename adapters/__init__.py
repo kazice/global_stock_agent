@@ -4,6 +4,6 @@ from .finnhub import FinnhubAdapter
 from .twse import TWSEAdapter
 from .jquants import JQuantsAdapter
 from .stooq import StooqAdapter
-from .sinahk import SinaHKAdapter
+from .sinahk import HKAdapter
 
-__all__ = ["FinnhubAdapter", "TWSEAdapter", "JQuantsAdapter", "StooqAdapter", "SinaHKAdapter"]
+__all__ = ["FinnhubAdapter", "TWSEAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter"]

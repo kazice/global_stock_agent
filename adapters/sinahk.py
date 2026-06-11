@@ -1,8 +1,9 @@
 """
-Sina 港股适配器 - 新浪财经港股实时行情
+港股适配器 - 多源兜底
 
-直接调用新浪港股 API (hq.sinajs.cn), 绕过 akshare 的解析 bug
-API 返回格式: var hq_str_hk00700="名称,开盘,昨收,当前,最高,最低,..."
+数据源优先级:
+  1. 腾讯证券 API (qt.gtimg.cn) - 最稳定, CI 可用
+  2. 新浪财经 API (hq.sinajs.cn) - 兜底
 """
 from typing import Optional
 
@@ -11,16 +12,63 @@ import requests
 from .base import PriceAdapter, beijing_now
 
 
-class SinaHKAdapter(PriceAdapter):
-    name = "sinahk"
-    API_URL = "https://hq.sinajs.cn/list="
+class HKAdapter(PriceAdapter):
+    name = "hk"
 
     def fetch_quote(self, symbol: str) -> Optional[dict]:
         """symbol 格式: 0700.HK"""
-        code = symbol.split(".")[0].zfill(5)  # 0700 → 00700
+        code = symbol.split(".")[0].zfill(5)
+
+        # 1) 腾讯证券 API (首选, 非常稳定)
+        result = self._try_tencent(code)
+        if result:
+            return result
+
+        # 2) 新浪 API (兜底)
+        result = self._try_sina(code)
+        if result:
+            return result
+
+        return None
+
+    # ── 腾讯证券 API ──
+
+    def _try_tencent(self, code: str) -> Optional[dict]:
+        """
+        腾讯证券 API: https://qt.gtimg.cn/q=hk00700
+        返回: v_hk00700="name~open~prev_close~current~high~low~bid~ask~volume~amount~...";
+        字段以 ~ 分隔
+        """
         try:
             r = requests.get(
-                f"{self.API_URL}hk{code}",
+                f"https://qt.gtimg.cn/q=hk{code}",
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=10,
+            )
+            if r.status_code != 200:
+                return None
+            text = r.text.strip()
+            if '"' not in text:
+                return None
+            fields = text.split('"')[1].split("~")
+            # 腾讯返的字段: name, open, prev_close, current, high, low, bid, ask, volume, amount
+            if len(fields) < 6:
+                return None
+            return self._parse(fields, 0, 1, 2, 3, 4, 5)
+        except Exception:
+            return None
+
+    # ── 新浪财经 API ──
+
+    def _try_sina(self, code: str) -> Optional[dict]:
+        """
+        新浪港股 API: https://hq.sinajs.cn/list=hk00700
+        返回: var hq_str_hk00700="name,open,prev_close,current,high,low,...";
+        字段以 , 分隔
+        """
+        try:
+            r = requests.get(
+                f"https://hq.sinajs.cn/list=hk{code}",
                 headers={
                     "Referer": "https://finance.sina.com.cn",
                     "User-Agent": "Mozilla/5.0",
@@ -29,54 +77,51 @@ class SinaHKAdapter(PriceAdapter):
             )
             if r.status_code != 200:
                 return None
-
             text = r.text.strip()
-            # 格式: var hq_str_hk00700="腾讯控股,386.800,388.000,387.000,...";
             if '"' not in text:
                 return None
             fields = text.split('"')[1].split(",")
+            # 新浪字段: name, open, prev_close, current, high, low, ...
             if len(fields) < 7:
                 return None
-
-            name = fields[0]
-            cur_str = fields[6]  # 当前价
-            prev_close_str = fields[2]  # 昨收
-            open_str = fields[1]        # 开盘
-            high_str = fields[4]        # 最高
-            low_str = fields[5]         # 最低
-
-            try:
-                cur = float(cur_str)
-                prev_close = float(prev_close_str)
-            except (ValueError, IndexError):
-                return None
-
-            if cur == 0 or prev_close == 0:
-                return None
-
-            change = cur - prev_close
-            change_pct = change / prev_close * 100
-
-            return {
-                "price": cur,
-                "change": round(change, 2),
-                "change_pct": round(change_pct, 2),
-                "open": float(open_str) if open_str else cur,
-                "high": float(high_str) if high_str else cur,
-                "low": float(low_str) if low_str else cur,
-                "prev_close": prev_close,
-                "source": self.name,
-                "updated_at": beijing_now(),
-            }
+            return self._parse(fields, 0, 1, 2, 6, 4, 5)
         except Exception:
             return None
 
+    # ── 统一解析 ──
+
+    @staticmethod
+    def _parse(fields, idx_name, idx_open, idx_pc, idx_cur, idx_high, idx_low) -> Optional[dict]:
+        try:
+            cur = float(fields[idx_cur])
+            prev_close = float(fields[idx_pc])
+        except (ValueError, IndexError):
+            return None
+        if cur == 0 or prev_close == 0:
+            return None
+        change = cur - prev_close
+        change_pct = change / prev_close * 100
+        open_p = float(fields[idx_open]) if fields[idx_open] else cur
+        high = float(fields[idx_high]) if idx_high < len(fields) and fields[idx_high] else cur
+        low = float(fields[idx_low]) if idx_low < len(fields) and fields[idx_low] else cur
+        return {
+            "price": cur,
+            "change": round(change, 2),
+            "change_pct": round(change_pct, 2),
+            "open": open_p,
+            "high": high,
+            "low": low,
+            "prev_close": prev_close,
+            "source": "hk",
+            "updated_at": beijing_now(),
+        }
+
+    # ── 历史数据 ──
+
     def fetch_history(self, symbol: str, days: int = 7) -> Optional[list]:
-        """港股历史数据通过 akshare 获取"""
         try:
             import akshare as ak
             import datetime
-
             code = symbol.split(".")[0].zfill(5)
             end = datetime.date.today()
             start = end - datetime.timedelta(days=days * 2)
