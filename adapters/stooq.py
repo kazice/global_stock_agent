@@ -21,6 +21,7 @@ class StooqAdapter(PriceAdapter):
     SUFFIX_MAP = {
         "TW": "tw", "TWO": "tw",
         "T": "jp",
+        "SH": "ss", "SZ": "sz",
         "DE": "de",
         "PA": "fr",
         "AS": "nl",
