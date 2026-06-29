@@ -28,7 +28,7 @@ FINNHUB_BASE = "https://finnhub.io/api/v1"
 REPORT_FORMAT = os.getenv("REPORT_FORMAT", "markdown")
 
 # 当日报价已缓存时是否强制刷新
-FORCE_REFRESH = os.getenv("FORCE_REFRESH", "0") == "1"
+FORCE_REFRESH = os.getenv("FORCE_REFRESH", "1") == "1"
 
 # Stooq API Key (可选, 部分IP需 Key 才能访问 Stooq CSV)
 # 获取: https://stooq.com → 搜任意股票 → 下载CSV → 复制URL中的 apikey 参数
