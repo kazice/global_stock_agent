@@ -202,15 +202,39 @@ def build_report(stocks, results, stats):
         lines.append("## 近一周跌幅 TOP 10")
         for it in sorted(wk, key=lambda x: x["week_change"])[:10]:
             lines.append(f"| {it['name']} | {it['symbol']} | {it['price']:.2f} | {it['week_change']:+.2f}% | {it['source']} |")
-    lines.append("## 全量明细（按板块）")
+    # 先构建全量明细（暂不合并，用于体积判断）
+    detail_lines = []
+    detail_lines.append("## 全量明细（按板块）")
     for sn, grp in _sector_items(stocks, results):
         up = sum(1 for _,_,it,_ in grp if it.get("change_pct",0) > 0)
         dn = len(grp) - up
-        lines.append(f"### {sn} (↑{up} ↓{dn})")
+        detail_lines.append(f"### {sn} (↑{up} ↓{dn})")
         for name,sym,it,desc in grp:
             t = it.get("updated_at",""); ts = f" [{t}]" if t else ""
             w = it.get("week_change"); ws = f" 周{w:+.2f}%" if w else ""
-            lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ws} [{it['source']}]")
+            detail_lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ws} [{it['source']}]")
+    # 体积保护: 如果全量内容超过 40KB，只保留板块摘要（避免 PushPlus 推送失败）
+    full_text = "\n".join(lines + detail_lines)
+    if len(full_text.encode("utf-8")) > 40000:
+        detail_lines = ["## 全量明细（按板块）"]
+        for sn, grp in _sector_items(stocks, results):
+            up = sum(1 for _,_,it,_ in grp if it.get("change_pct",0) > 0)
+            dn = len(grp) - up
+            detail_lines.append(f"### {sn} (↑{up} ↓{dn})")
+            # 只展示板块内 TOP5 涨跌幅
+            top5 = sorted(grp, key=lambda x: x[2]["change_pct"], reverse=True)[:5]
+            detail_lines.append(f"  **涨幅前5:**")
+            for name,sym,it,desc in top5:
+                w = it.get("week_change"); ws = f" 周{w:+.2f}%" if w else ""
+                detail_lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ws}")
+            bottom5 = sorted(grp, key=lambda x: x[2]["change_pct"])[:5]
+            detail_lines.append(f"  **跌幅前5:**")
+            for name,sym,it,desc in bottom5:
+                w = it.get("week_change"); ws = f" 周{w:+.2f}%" if w else ""
+                detail_lines.append(f"  {name} {sym} {it['price']:.2f} {it['change_pct']:+.2f}%{ws}")
+            detail_lines.append("")  # 板块间空行
+        detail_lines.append(f"> 内容过长，已截断。完整明细见 report.html")
+    lines.extend(detail_lines)
     return "\n".join(lines)
 
 # 板块配色 (17 个板块各一个背景色)
@@ -259,22 +283,20 @@ def build_report_html(stocks, results, stats, pending=None):
     # 全量板块表格
     lines.append('<hr>')
     lines.append(f'<table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size:15px">')
-    lines.append(f'<tr><td {TH} colspan="5">名称</td><td {TH}>代码</td><td {TH}>涨跌幅</td><td {TH}>周涨跌</td><td {TH}>简介</td></tr>')
+    lines.append(f'<tr><td {TH} colspan="5">名称</td><td {TH}>代码</td><td {TH}>涨跌幅</td><td {TH}>周涨跌</td></tr>')
     for ci, (sn, grp) in enumerate(_sector_items(stocks, results)):
         bg = SECTOR_COLORS[ci % len(SECTOR_COLORS)]
         up = sum(1 for _,_,it,_ in grp if it.get("change_pct",0) > 0)
         dn = len(grp) - up
-        lines.append(f'<tr><td colspan="9" style="font-size:15px;font-weight:bold;text-align:left;padding:3px 6px;background:{bg}">【{sn}】↑{up}↓{dn}</td></tr>')
+        lines.append(f'<tr><td colspan="8" style="font-size:15px;font-weight:bold;text-align:left;padding:3px 6px;background:{bg}">【{sn}】↑{up}↓{dn}</td></tr>')
         for name, sym, it, desc in grp:
             wk = it.get("week_change")
             d = _wk_color(wk)
-            desc_txt = desc if desc else "—"
             lines.append(f'<tr style="text-align:center;background:{bg}">'
                          f'<td colspan="5" style="font-size:15px;padding:2px 6px;text-align:left">{name}</td>'
                          f'<td style="font-size:13px;color:#555;padding:2px 6px">{sym}</td>'
                          f'<td style="font-size:15px;padding:2px 6px">{_color(it["change_pct"])}</td>'
-                         f'<td style="font-size:15px;padding:2px 6px">{d}</td>'
-                         f'<td style="font-size:12px;color:#999;padding:2px 6px">{desc_txt}</td></tr>')
+                         f'<td style="font-size:15px;padding:2px 6px">{d}</td></tr>')
     lines.append('</table>')
 
     if pending:
@@ -319,7 +341,7 @@ def finish(stocks, results, pending):
     with open("report.html","w",encoding="utf-8") as f: f.write(html)
     print("[保存] report.html")
     print(f"全球龙头行情日报 {datetime.now().strftime('%Y-%m-%d %H:%M')}\n{'='*55}\n成功:{success}  待重试:{len(pending)}  上涨:{up}  下跌:{down}")
-    push_wx(f"全球龙头行情日报 ({datetime.now().strftime('%m-%d')})", html, template="html")
+    push_wx(f"全球龙头行情日报 ({datetime.now().strftime('%m-%d')})", md, template="markdown")
     if success < total * 0.2: print("[警告] 成功率低于20%"); sys.exit(1)
 
 def main():
