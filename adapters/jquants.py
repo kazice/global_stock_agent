@@ -97,13 +97,13 @@ class JQuantsAdapter(PriceAdapter):
 
     def fetch_quote(self, symbol: str) -> Optional[dict]:
         """
-        symbol 格式: "7203.T" → 提取 code="72030" (J-Quants 用5位代码)
+        symbol 格式: "7203.T" → 提取 code="72030" (J-Quants 用5位代码，末尾补0)
         """
         code = symbol.split(".")[0]
 
-        # 自动填充到5位 (J-Quants 格式)
-        if len(code) < 5:
-            code = code.zfill(5)
+        # J-Quants 代码格式: 4位数字后面补 "0"，如 7203 → 72030, 4063 → 40630
+        if len(code) <= 4:
+            code = code + "0"
 
         id_token = self._authenticate()
         if not id_token:
@@ -155,8 +155,8 @@ class JQuantsAdapter(PriceAdapter):
     def fetch_history(self, symbol: str, days: int = 7) -> Optional[list]:
         """J-Quants 历史数据"""
         code = symbol.split(".")[0]
-        if len(code) < 5:
-            code = code.zfill(5)
+        if len(code) <= 4:
+            code = code + "0"
 
         id_token = self._authenticate()
         if not id_token:
