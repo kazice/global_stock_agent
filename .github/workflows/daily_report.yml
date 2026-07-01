@@ -42,9 +42,6 @@ jobs:
           key: stock-cache-${{ github.run_id }}
           restore-keys: stock-cache-
 
-      - name: 拉取最新代码
-        run: git pull origin main
-
       - name: 运行行情采集与推送
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
