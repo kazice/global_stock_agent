@@ -1,137 +1,72 @@
 """
-J-Quants 适配器 - 日本 TSE 股票
+J-Quants 适配器 - 日本 TSE 股票 (V2 API)
 
 J-Quants 是日本交易所集团官方免费 API
-需注册: https://jquants.com/
-认证流程: email+password → refresh_token → id_token
+注册: https://jpx-jquants.com → 获取 API Key
+认证: V2 使用 x-api-key 头
 """
-import json
 import os
-import time
 from typing import Optional
 
 import requests
 
 from .base import PriceAdapter, beijing_now
 
-TOKEN_CACHE_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "cache", ".jquants_token.json"
-)
-
 
 class JQuantsAdapter(PriceAdapter):
     name = "jquants"
-    AUTH_URL = "https://api.jquants.com/v1/token/auth_user"
-    REFRESH_URL = "https://api.jquants.com/v1/token/auth_refresh"
-    QUOTE_URL = "https://api.jquants.com/v1/prices/daily_quotes"
+    BASE_URL = "https://api.jquants.com/v2"
+    BARS_URL = f"{BASE_URL}/equities/bars/daily"
 
-    def __init__(self, mail: str = "", password: str = ""):
-        self._mail = mail or os.getenv("JQUANTS_MAIL", "")
-        self._password = password or os.getenv("JQUANTS_PASS", "")
-        self._id_token = None
+    def __init__(self, api_key: str = ""):
+        self._api_key = api_key or os.getenv("JQUANTS_API_KEY", "")
+        # 兼容旧版: 如果只有邮箱密码，尝试用邮箱密码
+        if not self._api_key:
+            mail = os.getenv("JQUANTS_MAIL", "")
+            pw = os.getenv("JQUANTS_PASS", "")
+            if mail and pw:
+                # 旧版凭据，尝试用 mail 作为 api_key（可能已迁移为 key）
+                self._api_key = mail
 
-    def _load_cached_token(self) -> Optional[str]:
-        try:
-            if os.path.exists(TOKEN_CACHE_FILE):
-                data = json.load(open(TOKEN_CACHE_FILE))
-                expire = data.get("expire_at", 0)
-                if time.time() < expire:
-                    return data.get("id_token")
-        except Exception:
-            pass
-        return None
-
-    def _save_token(self, id_token: str, expires_in: int = 86400):
-        try:
-            os.makedirs(os.path.dirname(TOKEN_CACHE_FILE), exist_ok=True)
-            json.dump(
-                {
-                    "id_token": id_token,
-                    "expire_at": time.time() + expires_in - 300,  # 提前5分钟过期
-                },
-                open(TOKEN_CACHE_FILE, "w"),
-            )
-        except Exception:
-            pass
-
-    def _authenticate(self) -> Optional[str]:
-        """J-Quants 认证流程"""
-        # 1. 尝试缓存token
-        cached = self._load_cached_token()
-        if cached:
-            self._id_token = cached
-            return cached
-
-        if not self._mail or not self._password:
-            return None
-
-        try:
-            # 获取 refresh token
-            r = requests.post(
-                self.AUTH_URL,
-                json={"mailaddress": self._mail, "password": self._password},
-                timeout=10,
-            )
-            if r.status_code != 200:
-                return None
-            refresh_token = r.json().get("refreshToken")
-            if not refresh_token:
-                return None
-
-            # 用 refresh token 获取 id token
-            r = requests.post(
-                self.REFRESH_URL,
-                params={"refreshtoken": refresh_token},
-                timeout=10,
-            )
-            if r.status_code != 200:
-                return None
-            id_token = r.json().get("idToken")
-            if id_token:
-                self._id_token = id_token
-                self._save_token(id_token)
-                return id_token
-        except Exception:
-            pass
-        return None
-
-    def fetch_quote(self, symbol: str) -> Optional[dict]:
+    def _to_jquants_code(self, symbol: str) -> str:
         """
-        symbol 格式: "7203.T" → 提取 code="72030" (J-Quants 用5位代码，末尾补0)
+        7203.T → 72030 (J-Quants 用5位代码，末尾补0)
         """
         code = symbol.split(".")[0]
-
-        # J-Quants 代码格式: 4位数字后面补 "0"，如 7203 → 72030, 4063 → 40630
         if len(code) <= 4:
             code = code + "0"
+        return code
 
-        id_token = self._authenticate()
-        if not id_token:
+    def fetch_quote(self, symbol: str) -> Optional[dict]:
+        code = self._to_jquants_code(symbol)
+        if not self._api_key:
             return None
 
         try:
             r = requests.get(
-                self.QUOTE_URL,
-                params={"code": code},
-                headers={"Authorization": f"Bearer {id_token}"},
-                timeout=10,
+                self.BARS_URL,
+                params={"code": code, "limit": 2},
+                headers={"x-api-key": self._api_key},
+                timeout=15,
             )
-            if r.status_code == 401:
-                # token 过期, 重新认证
-                self._id_token = None
-                return self.fetch_quote(symbol)
             if r.status_code != 200:
                 return None
 
             data = r.json()
-            quotes = data.get("daily_quote", [])
-            if not quotes:
+            bars = data.get("data", [])
+            if len(bars) < 2:
                 return None
 
-            # 最新交易日
-            latest = quotes[0]
-            cur = float(latest.get("Close", 0))
-            prev_close = float(latest.get("PreviousClose", 0) or 0)
+            # V2 字段: O/H/L/C (而非 Open/High/Low/Close)
+            latest = bars[-1] if len(bars) > 1 else bars[0]
+            prev = bars[-2] if len(bars) > 1 else bars[0]
+
+            cur = float(latest.get("C", 0))
+            prev_close = float(prev.get("C", 0))
+            open_p = float(latest.get("O", cur))
+            high = float(latest.get("H", cur))
+            low = float(latest.get("L", cur))
+
             if cur == 0:
                 return None
 
@@ -142,9 +77,9 @@ class JQuantsAdapter(PriceAdapter):
                 "price": cur,
                 "change": round(change, 2),
                 "change_pct": round(change_pct, 2),
-                "open": float(latest.get("Open", 0)),
-                "high": float(latest.get("High", 0)),
-                "low": float(latest.get("Low", 0)),
+                "open": open_p,
+                "high": high,
+                "low": low,
                 "prev_close": prev_close,
                 "source": self.name,
                 "updated_at": beijing_now(),
@@ -153,32 +88,31 @@ class JQuantsAdapter(PriceAdapter):
             return None
 
     def fetch_history(self, symbol: str, days: int = 7) -> Optional[list]:
-        """J-Quants 历史数据"""
-        code = symbol.split(".")[0]
-        if len(code) <= 4:
-            code = code + "0"
-
-        id_token = self._authenticate()
-        if not id_token:
+        code = self._to_jquants_code(symbol)
+        if not self._api_key:
             return None
 
         try:
             r = requests.get(
-                self.QUOTE_URL,
-                params={"code": code},
-                headers={"Authorization": f"Bearer {id_token}"},
-                timeout=10,
+                self.BARS_URL,
+                params={"code": code, "limit": days + 2},
+                headers={"x-api-key": self._api_key},
+                timeout=15,
             )
             if r.status_code != 200:
                 return None
 
             data = r.json()
-            quotes = data.get("daily_quote", [])
+            bars = data.get("data", [])
+            if not bars:
+                return None
+
             result = []
-            for q in quotes[:days]:
-                close = float(q.get("Close", 0))
-                if close:
-                    result.append({"date": q.get("Date", ""), "close": close})
-            return result if result else None
+            for b in bars:
+                close = float(b.get("C", 0))
+                date = b.get("Date", "")
+                if close and date:
+                    result.append({"date": date, "close": close})
+            return result[-days:] if result else None
         except Exception:
             return None

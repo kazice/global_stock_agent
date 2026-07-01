@@ -48,8 +48,7 @@ jobs:
       - name: 运行行情采集与推送
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
-          JQUANTS_MAIL: ${{ secrets.JQUANTS_MAIL }}
-          JQUANTS_PASS: ${{ secrets.JQUANTS_PASS }}
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
           STOOQ_API_KEY: ${{ secrets.STOOQ_API_KEY }}
           REQUEST_INTERVAL: ${{ vars.REQUEST_INTERVAL || '0.35' }}
