@@ -7,5 +7,6 @@ from .jquants import JQuantsAdapter
 from .stooq import StooqAdapter
 from .sinahk import HKAdapter
 from .yahoo import YahooAdapter
+from .naver import NaverAdapter
 
-__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter"]
+__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter", "NaverAdapter"]
