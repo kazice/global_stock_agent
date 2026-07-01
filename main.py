@@ -12,7 +12,7 @@ from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter
 def route_symbol(symbol: str) -> str:
     if "." not in symbol: return "finnhub"
     suffix = symbol.rsplit(".", 1)[-1].upper()
-    m = {"TW":"stooq","TWO":"stooq","T":"yahoo","KS":"naver",
+    m = {"TW":"stooq","TWO":"stooq","T":"stooq","KS":"naver",
          "SH":"akshare","SZ":"akshare","DE":"stooq","PA":"stooq",
          "SW":"stooq","L":"stooq","ST":"stooq","CO":"stooq",
          "AS":"stooq","SR":"stooq","HK":"hk"}
