@@ -7,17 +7,17 @@ from datetime import datetime
 from typing import Optional
 import requests
 import config
-from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter, NaverAdapter, TencentJPAdapter
+from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter, NaverAdapter, TencentJPAdapter, TencentUSAdapter
 
 def route_symbol(symbol: str) -> str:
-    if "." not in symbol: return "finnhub"
+    if "." not in symbol: return "tencent_us"
     suffix = symbol.rsplit(".", 1)[-1].upper()
     m = {"TW":"stooq","TWO":"stooq","T":"tencent_jp","KS":"naver",
          "SH":"akshare","SZ":"akshare","DE":"stooq","PA":"stooq",
          "SW":"stooq","L":"stooq","ST":"stooq","CO":"stooq",
          "AS":"stooq","SR":"stooq","HK":"hk"}
     return m.get(suffix, "finnhub")
-FALLBACK_CHAIN = {"twse":["twstock","stooq","yahoo"],"twstock":["stooq","yahoo"],"jquants":["yahoo"],"akshare":["stooq","yahoo"],"hk":["stooq","yahoo"],"finnhub":["stooq","yahoo"],"stooq":["twse","jquants","yahoo"],"naver":["stooq","yahoo"],"yahoo":["stooq","jquants"],"tencent_jp":["stooq","yahoo"]}
+FALLBACK_CHAIN = {"twse":["twstock","stooq","yahoo"],"twstock":["stooq","yahoo"],"jquants":["yahoo"],"akshare":["stooq","yahoo"],"hk":["stooq","yahoo"],"finnhub":["stooq","yahoo"],"stooq":["twse","jquants","yahoo"],"naver":["stooq","yahoo"],"yahoo":["stooq","jquants"],"tencent_jp":["stooq","yahoo"],"tencent_us":["finnhub","yahoo"]}
 # ============================================================
 # 板块分类: 优先按 symbol 精确匹配, 兜底按 watchlist 索引范围
 # 索引范围由 watchlist.json 按空行分隔的段落精确计算得出
@@ -397,7 +397,8 @@ def main():
              "hk":HKAdapter(),
              "yahoo":YahooAdapter(),
              "naver":NaverAdapter(),
-             "tencent_jp":TencentJPAdapter()}
+             "tencent_jp":TencentJPAdapter(),
+             "tencent_us":TencentUSAdapter()}
     try:
         from adapters.akshare import AkShareAdapter
         adpts["akshare"] = AkShareAdapter()
