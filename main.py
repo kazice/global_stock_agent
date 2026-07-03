@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional
 import requests
 import config
-from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter, NaverAdapter, TencentJPAdapter, TencentUSAdapter, BoerseFrankfurtAdapter
+from adapters import FinnhubAdapter, TWSEAdapter, TWSEOpenAPIAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter, NaverAdapter, TencentJPAdapter, TencentUSAdapter, BoerseFrankfurtAdapter
 
 TAIWAN_SUFFIXES = {"TW", "TWO"}
 EUROPE_SUFFIXES = {"DE", "PA", "SW", "L", "ST", "CO", "AS"}
@@ -24,7 +24,7 @@ def route_symbol(symbol: str) -> str:
          "SR":"stooq","HK":"hk"}
     return m.get(suffix, "finnhub")
 FALLBACK_CHAIN = {
-    "taiwan":["twse","twstock","yahoo","stooq"],
+    "taiwan":["twse","twse_openapi","twstock","yahoo","stooq"],
     "europe":["stooq","yahoo","boerse_frankfurt","finnhub"],
     "twse":["twstock","yahoo","stooq"],
     "twstock":["yahoo","stooq"],
@@ -443,7 +443,7 @@ def main():
         else: print("[完成] 全部已缓存"); finish(stocks,rc,pc); return
     else: fs, rs, pd = list(stocks), {}, []
     adpts = {"finnhub":FinnhubAdapter(config.FINNHUB_API_KEY,config.FINNHUB_BASE),
-             "twse":TWSEAdapter(),"twstock":TWStockAdapter(),
+             "twse":TWSEAdapter(),"twse_openapi":TWSEOpenAPIAdapter(),"twstock":TWStockAdapter(),
              "jquants":JQuantsAdapter(),
              "stooq":StooqAdapter(api_key=config.STOOQ_API_KEY),
              "hk":HKAdapter(),

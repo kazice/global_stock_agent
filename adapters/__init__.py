@@ -2,6 +2,7 @@
 
 from .finnhub import FinnhubAdapter
 from .twse import TWSEAdapter
+from .twse_openapi import TWSEOpenAPIAdapter
 from .twstock_adapter import TWStockAdapter
 from .jquants import JQuantsAdapter
 from .stooq import StooqAdapter
@@ -12,4 +13,4 @@ from .tencent_jp import TencentJPAdapter
 from .tencent_us import TencentUSAdapter
 from .boerse_frankfurt import BoerseFrankfurtAdapter
 
-__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter", "NaverAdapter", "TencentJPAdapter", "TencentUSAdapter", "BoerseFrankfurtAdapter"]
+__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWSEOpenAPIAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter", "NaverAdapter", "TencentJPAdapter", "TencentUSAdapter", "BoerseFrankfurtAdapter"]
