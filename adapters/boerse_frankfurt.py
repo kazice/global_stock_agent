@@ -17,17 +17,24 @@ class BoerseFrankfurtAdapter(PriceAdapter):
 
     ISIN_MAP = {
         "ADS.DE": "DE000A1EWWW0",
+        "AIR.PA": "NL0000235190",
         "ALV.DE": "DE0008404005",
+        "AKZA.AS": "NL0013267909",
         "BAS.DE": "DE000BASF111",
         "BMW.DE": "DE0005190003",
         "DTE.DE": "DE0005557508",
         "ENR.DE": "DE000ENER6Y0",
         "IFX.DE": "DE0006231004",
+        "MC.PA": "FR0000121014",
         "MBG.DE": "DE0007100000",
+        "OR.PA": "FR0000120321",
+        "RMS.PA": "FR0000052292",
         "SAP.DE": "DE0007164600",
+        "SAF.PA": "FR0000073272",
         "SHL.DE": "DE000SHL1006",
         "SIE.DE": "DE0007236101",
         "VOW3.DE": "DE0007664039",
+        "WAF.DE": "DE000WAF3001",
     }
 
     def fetch_quote(self, symbol: str) -> Optional[dict]:
