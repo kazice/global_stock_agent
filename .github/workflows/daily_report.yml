@@ -1,6 +1,9 @@
 name: 全球龙头行情日报
 
 on:
+  push:
+    branches:
+      - test/tw-eu-data-sources
   schedule:
     - cron: '30 0 * * 1-5'
     - cron: '0 5 * * 1-5'
@@ -42,8 +45,10 @@ jobs:
           key: stock-cache-${{ github.run_id }}
           restore-keys: stock-cache-
 
-      - name: 拉取最新代码
-        run: git fetch origin main && git reset --hard origin/main
+      - name: 确认当前测试代码
+        run: |
+          git branch --show-current
+          git rev-parse --short HEAD
 
       - name: 运行行情采集与推送
         env:

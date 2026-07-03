@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>台股 / 欧股数据源验证</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --text: #1f2933;
+      --muted: #657080;
+      --line: #d9e1ea;
+      --panel: #ffffff;
+      --bg: #f5f7fa;
+      --up: #c93632;
+      --down: #23865b;
+      --blue: #245a9c;
+      --amber: #936316;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+    main {
+      width: min(1080px, calc(100% - 32px));
+      margin: 28px auto;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .sub, .stamp, .note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      min-height: 286px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .market {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 4px 0 0;
+      font-size: 20px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .symbol {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+    .badge {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      white-space: nowrap;
+      color: var(--blue);
+      background: #f4f8fc;
+    }
+    .price-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      margin-top: 20px;
+    }
+    .price {
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .change {
+      text-align: right;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .up { color: var(--up); }
+    .down { color: var(--down); }
+    .bar {
+      height: 12px;
+      background: #edf1f5;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+    .fill {
+      height: 100%;
+      width: min(var(--w), 100%);
+    }
+    .fill.up { background: var(--up); }
+    .fill.down { background: var(--down); }
+    dl {
+      display: grid;
+      grid-template-columns: 84px 1fr;
+      gap: 8px 10px;
+      margin: 18px 0 0;
+      font-size: 13px;
+    }
+    dt { color: var(--muted); }
+    dd { margin: 0; }
+    .routes {
+      margin-top: 22px;
+      display: grid;
+      gap: 10px;
+    }
+    .route {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .route strong { color: var(--amber); }
+    code {
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 13px;
+      background: #eef2f6;
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    @media (max-width: 760px) {
+      main { width: min(100% - 20px, 1080px); margin: 18px auto; }
+      header { display: block; }
+      .stamp { margin-top: 8px; }
+      .grid { grid-template-columns: 1fr; }
+      .price { font-size: 34px; }
+      .change { font-size: 19px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>台股 / 欧股数据源验证</h1>
+        <div class="sub">测试分支：<code>test/tw-eu-data-sources</code>；修改文件：<code>main.py</code></div>
+      </div>
+      <div class="stamp">生成时间：2026-07-03 12:08 CST</div>
+    </header>
+
+    <section class="grid" aria-label="行情验证卡片">
+      <article class="card">
+        <div>
+          <div class="market">
+            <div>
+              <div class="label">Taiwan sample</div>
+              <h2>联电</h2>
+              <div class="symbol">2303.TW / TWSE</div>
+            </div>
+            <div class="badge">TWSE 官方</div>
+          </div>
+          <div class="price-row">
+            <div>
+              <div class="label">当前价</div>
+              <div class="price">168.00</div>
+            </div>
+            <div class="change up">+1.51%</div>
+          </div>
+          <div class="bar" aria-hidden="true"><div class="fill up" style="--w: 30.2%"></div></div>
+          <dl>
+            <dt>涨跌额</dt><dd class="up">+2.50</dd>
+            <dt>昨收</dt><dd>165.50</dd>
+            <dt>开盘</dt><dd>159.00</dd>
+            <dt>高 / 低</dt><dd>168.00 / 158.50</dd>
+            <dt>时间</dt><dd>2026-07-03 12:08 CST</dd>
+          </dl>
+        </div>
+      </article>
+
+      <article class="card">
+        <div>
+          <div class="market">
+            <div>
+              <div class="label">Europe sample</div>
+              <h2>英飞凌</h2>
+              <div class="symbol">IFX.DE / XETR</div>
+            </div>
+            <div class="badge">Borse Frankfurt</div>
+          </div>
+          <div class="price-row">
+            <div>
+              <div class="label">最近价</div>
+              <div class="price">75.76</div>
+            </div>
+            <div class="change down">-1.99%</div>
+          </div>
+          <div class="bar" aria-hidden="true"><div class="fill down" style="--w: 39.8%"></div></div>
+          <dl>
+            <dt>涨跌额</dt><dd class="down">-1.55</dd>
+            <dt>开盘</dt><dd>75.50</dd>
+            <dt>状态</dt><dd>Retail Early/Late</dd>
+            <dt>交易所</dt><dd>XETR</dd>
+            <dt>时间</dt><dd>2026-07-03 03:59:08 CST</dd>
+          </dl>
+        </div>
+      </article>
+    </section>
+
+    <section class="routes" aria-label="数据源路由验证">
+      <div class="route">
+        <strong>台股路由</strong>：<code>2303.TW</code> 命中 <code>taiwan</code>，预期链路为
+        <code>twse</code> -> <code>twstock</code> -> <code>yahoo</code> -> <code>stooq</code>。本次样本由 <code>twse</code> 返回。
+      </div>
+      <div class="route">
+        <strong>欧股路由</strong>：<code>IFX.DE</code> 命中 <code>europe</code>，预期链路为
+        <code>stooq</code> -> <code>yahoo</code> -> <code>finnhub</code>。当前环境中 Stooq/Yahoo/Finnhub 分别遇到浏览器验证、限流或 TLS 握手问题，因此用交易所公开接口补充展示欧股验证样本。
+      </div>
+      <div class="note">
+        注：2026-07-03 11:54 CST 对应欧洲清晨，欧股样本展示的是交易所可取得的最近报价；台股样本为盘中报价。
+      </div>
+    </section>
+  </main>
+</body>
+</html>

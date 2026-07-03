@@ -10,5 +10,6 @@ from .yahoo import YahooAdapter
 from .naver import NaverAdapter
 from .tencent_jp import TencentJPAdapter
 from .tencent_us import TencentUSAdapter
+from .boerse_frankfurt import BoerseFrankfurtAdapter
 
-__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter", "NaverAdapter", "TencentJPAdapter", "TencentUSAdapter"]
+__all__ = ["FinnhubAdapter", "TWSEAdapter", "TWStockAdapter", "JQuantsAdapter", "StooqAdapter", "HKAdapter", "YahooAdapter", "NaverAdapter", "TencentJPAdapter", "TencentUSAdapter", "BoerseFrankfurtAdapter"]

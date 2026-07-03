@@ -7,17 +7,37 @@ from datetime import datetime
 from typing import Optional
 import requests
 import config
-from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter, NaverAdapter, TencentJPAdapter, TencentUSAdapter
+from adapters import FinnhubAdapter, TWSEAdapter, TWStockAdapter, JQuantsAdapter, StooqAdapter, HKAdapter, YahooAdapter, NaverAdapter, TencentJPAdapter, TencentUSAdapter, BoerseFrankfurtAdapter
+
+TAIWAN_SUFFIXES = {"TW", "TWO"}
+EUROPE_SUFFIXES = {"DE", "PA", "SW", "L", "ST", "CO", "AS"}
 
 def route_symbol(symbol: str) -> str:
     if "." not in symbol: return "tencent_us"
     suffix = symbol.rsplit(".", 1)[-1].upper()
-    m = {"TW":"stooq","TWO":"stooq","T":"tencent_jp","KS":"naver",
-         "SH":"akshare","SZ":"akshare","DE":"stooq","PA":"stooq",
-         "SW":"stooq","L":"stooq","ST":"stooq","CO":"stooq",
-         "AS":"stooq","SR":"stooq","HK":"hk"}
+    if suffix in TAIWAN_SUFFIXES:
+        return "taiwan"
+    if suffix in EUROPE_SUFFIXES:
+        return "europe"
+    m = {"T":"tencent_jp","KS":"naver",
+         "SH":"akshare","SZ":"akshare",
+         "SR":"stooq","HK":"hk"}
     return m.get(suffix, "finnhub")
-FALLBACK_CHAIN = {"twse":["twstock","stooq","yahoo"],"twstock":["stooq","yahoo"],"jquants":["yahoo"],"akshare":["stooq","yahoo"],"hk":["stooq","yahoo"],"finnhub":["stooq","yahoo"],"stooq":["twse","jquants","yahoo"],"naver":["stooq","yahoo"],"yahoo":["stooq","jquants"],"tencent_jp":["stooq","yahoo"],"tencent_us":["finnhub","yahoo"]}
+FALLBACK_CHAIN = {
+    "taiwan":["twse","twstock","yahoo","stooq"],
+    "europe":["stooq","yahoo","boerse_frankfurt","finnhub"],
+    "twse":["twstock","yahoo","stooq"],
+    "twstock":["yahoo","stooq"],
+    "jquants":["yahoo"],
+    "akshare":["stooq","yahoo"],
+    "hk":["hk","stooq","yahoo"],
+    "finnhub":["finnhub","stooq","yahoo"],
+    "stooq":["stooq","yahoo"],
+    "naver":["naver","stooq","yahoo"],
+    "yahoo":["yahoo","stooq"],
+    "tencent_jp":["tencent_jp","stooq","yahoo"],
+    "tencent_us":["tencent_us","finnhub","yahoo"],
+}
 # ============================================================
 # 板块分类: 优先按 symbol 精确匹配, 兜底按 watchlist 索引范围
 # 索引范围由 watchlist.json 按空行分隔的段落精确计算得出
@@ -106,15 +126,24 @@ def load_watchlist(fp: str) -> list:
     return s
 
 def fetch_with_fallback(sym: str, adpts: dict, rt: str) -> Optional[dict]:
+    tried = set()
+    synthetic_route = rt not in adpts
     a = adpts.get(rt)
     if a:
+        tried.add(rt)
         r = a.fetch_quote(sym)
         if r: return r
     for fb in FALLBACK_CHAIN.get(rt,[]):
+        if fb in tried:
+            continue
+        tried.add(fb)
         fa = adpts.get(fb)
         if fa:
             r = fa.fetch_quote(sym)
-            if r: r["source"] = f"{r['source']}(fallback)"; return r
+            if r:
+                if not synthetic_route:
+                    r["source"] = f"{r['source']}(fallback)"
+                return r
     adr = ADR_MAP.get(sym)
     if adr:
         if "stooq" in adpts:
@@ -125,15 +154,38 @@ def fetch_with_fallback(sym: str, adpts: dict, rt: str) -> Optional[dict]:
             if r: r["source"] = "finnhub(ADR)"; return r
     return None
 
+def history_source_candidates(sym: str, adpts: dict, src_nm: str = "") -> list:
+    suffix = sym.rsplit(".", 1)[-1].upper() if "." in sym else "US"
+    if suffix in TAIWAN_SUFFIXES:
+        chain = ["twstock", "yahoo", "stooq"]
+    elif suffix in EUROPE_SUFFIXES:
+        chain = ["stooq", "yahoo", "boerse_frankfurt"]
+    elif suffix == "T":
+        chain = ["tencent_jp", "stooq", "yahoo", "jquants"]
+    elif suffix == "KS":
+        chain = ["naver", "stooq", "yahoo"]
+    elif suffix in {"SH", "SZ"}:
+        chain = ["akshare", "stooq", "yahoo"]
+    elif suffix == "HK":
+        chain = ["hk", "stooq", "yahoo"]
+    else:
+        chain = [src_nm] if src_nm else []
+        chain += ["stooq", "yahoo", "jquants"]
+
+    ordered = []
+    for nm in ([src_nm] if src_nm else []) + chain:
+        if nm and nm not in ordered and nm in adpts:
+            ordered.append(nm)
+    return ordered
+
 def get_weekly_change(sym: str, adpts: dict, cur_p: float,
                       src_nm: str = "", days: int = 5) -> Optional[float]:
     """
     计算周涨跌幅。
     src_nm: 成功获取实时报价的适配器名称, 优先用它查历史(保证币种一致)
     """
-    # 优先用报价同一适配器的历史数据
-    candidates = [src_nm] if src_nm else []
-    candidates += [nm for nm in adpts if nm != src_nm]
+    # 优先使用同市场/同币种的历史数据源，避免跨市场源串到周涨跌计算。
+    candidates = history_source_candidates(sym, adpts, src_nm=src_nm)
     for nm in candidates:
         a = adpts.get(nm)
         if a is None:
@@ -396,6 +448,7 @@ def main():
              "stooq":StooqAdapter(api_key=config.STOOQ_API_KEY),
              "hk":HKAdapter(),
              "yahoo":YahooAdapter(),
+             "boerse_frankfurt":BoerseFrankfurtAdapter(),
              "naver":NaverAdapter(),
              "tencent_jp":TencentJPAdapter(),
              "tencent_us":TencentUSAdapter()}
