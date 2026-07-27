@@ -3,7 +3,6 @@ name: 全球龙头行情日报
 on:
   schedule:
     - cron: '30 0 * * 1-5'
-    - cron: '0 5 * * 1-5'
   workflow_dispatch:
     inputs:
       push_only:
@@ -65,9 +64,7 @@ jobs:
           STOOQ_API_KEY: ${{ secrets.STOOQ_API_KEY }}
           REQUEST_INTERVAL: ${{ vars.REQUEST_INTERVAL || '0.35' }}
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 5 * * 1-5" ]; then
-            python main.py --push-only
-          elif [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.client_payload.push_only }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${{ github.event.client_payload.push_only }}" = "true" ]; then
             python main.py --push-only
           elif [ "${{ github.event.inputs.push_only }}" = "true" ]; then
             python main.py --push-only
