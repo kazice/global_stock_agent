@@ -45,7 +45,19 @@ jobs:
       - name: 拉取最新代码
         run: git fetch origin main && git reset --hard origin/main
 
+      - name: 判断工作日
+        id: weekday
+        run: |
+          DAY=$(date -u +%u)
+          if [ "$DAY" -le 5 ]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
+          else
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "[跳过] 非工作日 (周$DAY)，不执行采集与推送"
+          fi
+
       - name: 运行行情采集与推送
+        if: steps.weekday.outputs.skip != 'true'
         env:
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
