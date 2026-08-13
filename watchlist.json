@@ -250,6 +250,17 @@
     {"name": "康耐视", "symbol": "CGNX", "exchange": "NASDAQ"},
     {"name": "三菱电机", "symbol": "6503.T", "exchange": "TSE"},
 
+    {"name": "施耐德电气", "symbol": "SU.PA", "exchange": "Euronext"},
+    {"name": "伊顿", "symbol": "ETN", "exchange": "NYSE"},
+    {"name": "艾默生", "symbol": "EMR", "exchange": "NYSE"},
+    {"name": "霍尼韦尔", "symbol": "HON", "exchange": "NASDAQ"},
+    {"name": "派克汉尼汾", "symbol": "PH", "exchange": "NYSE"},
+    {"name": "阿美特克", "symbol": "AME", "exchange": "NYSE"},
+    {"name": "罗格朗", "symbol": "LR.PA", "exchange": "Euronext"},
+    {"name": "欧姆龙", "symbol": "6645.T", "exchange": "TSE"},
+    {"name": "富士电机", "symbol": "6504.T", "exchange": "TSE"},
+    {"name": "正泰电器", "symbol": "601877.SH", "exchange": "SSE"},
+
     {"name": "卡特彼勒", "symbol": "CAT", "exchange": "NYSE"},
     {"name": "小松", "symbol": "6301.T", "exchange": "TSE"},
     {"name": "三一重工", "symbol": "600031.SH", "exchange": "SSE"},
