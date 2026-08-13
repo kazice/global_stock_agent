@@ -295,6 +295,33 @@
     {"name": "爱马仕", "symbol": "RMS.PA", "exchange": "Euronext"},
     {"name": "欧莱雅", "symbol": "OR.PA", "exchange": "Euronext"},
     {"name": "阿迪达斯", "symbol": "ADS.DE", "exchange": "Frankfurt"},
-    {"name": "耐克", "symbol": "NKE", "exchange": "NYSE"}
+    {"name": "耐克", "symbol": "NKE", "exchange": "NYSE"},
+
+    {"name": "可口可乐", "symbol": "KO", "exchange": "NYSE"},
+    {"name": "百事", "symbol": "PEP", "exchange": "NASDAQ"},
+    {"name": "星巴克", "symbol": "SBUX", "exchange": "NASDAQ"},
+    {"name": "麦当劳", "symbol": "MCD", "exchange": "NYSE"},
+    {"name": "雀巢", "symbol": "NESN.SW", "exchange": "SIX"},
+    {"name": "联合利华", "symbol": "UL", "exchange": "NYSE"},
+    {"name": "宝洁", "symbol": "PG", "exchange": "NYSE"},
+    {"name": "高露洁", "symbol": "CL", "exchange": "NYSE"},
+    {"name": "亿滋国际", "symbol": "MDLZ", "exchange": "NASDAQ"},
+    {"name": "Costco", "symbol": "COST", "exchange": "NASDAQ"},
+    {"name": "沃尔玛", "symbol": "WMT", "exchange": "NYSE"},
+    {"name": "家得宝", "symbol": "HD", "exchange": "NYSE"},
+
+    {"name": "必和必拓", "symbol": "BHP", "exchange": "NYSE"},
+    {"name": "力拓", "symbol": "RIO", "exchange": "NYSE"},
+    {"name": "淡水河谷", "symbol": "VALE", "exchange": "NYSE"},
+    {"name": "自由港麦克莫兰", "symbol": "FCX", "exchange": "NYSE"},
+    {"name": "南方铜业", "symbol": "SCCO", "exchange": "NYSE"},
+    {"name": "纽蒙特", "symbol": "NEM", "exchange": "NYSE"},
+    {"name": "紫金矿业", "symbol": "601899.SH", "exchange": "SSE"},
+
+    {"name": "中国平安", "symbol": "601318.SH", "exchange": "SSE"},
+    {"name": "友邦保险", "symbol": "1299.HK", "exchange": "HKEX"},
+    {"name": "中国人寿", "symbol": "601628.SH", "exchange": "SSE"},
+    {"name": "大都会人寿", "symbol": "MET", "exchange": "NYSE"},
+    {"name": "保诚", "symbol": "PRU.L", "exchange": "LSE"}
   ]
 }
